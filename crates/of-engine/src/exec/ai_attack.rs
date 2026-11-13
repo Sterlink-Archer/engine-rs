@@ -306,7 +306,7 @@ pub fn send_attack<H: AiAttackHooks + ?Sized>(h: &mut H, cx: &mut Ctx, target: O
     }
     if target.is_player() {
         // TS: :97
-        if cx.st.player(h.player()).shares_border_with(target) {
+        if cx.shares_border(h.player(), target) {
             send_land_attack(h, cx, target, SendTroops::TroopsMinusReserve, None)
         } else {
             // TS: :100 `this.sendBoatAttack(target)`

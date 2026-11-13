@@ -701,6 +701,16 @@ impl PlayerExec {
         self.next_territory_id = 1;
         // try {
         let n = cx.sc.clusters.len();
+        // R1: `isHoleCluster(i)` only decides whether `evaluatePinchCandidates(i)` runs, and its side effects
+        // (`clusterTerritoryIds`, `nextTerritoryId`, `clusterIndexMap`, traversal stamps) are read only by later
+        // `isHoleCluster` calls. `evaluatePinchCandidates` changes game state in one branch only (the capture). So a cluster
+        // whose evaluation cannot capture needs no hole test now: its test is deferred and replayed, in index order and on the
+        // unchanged map (the capture branch is the only writer and comes after the replay), right before the first hole test
+        // that precedes a capture. Deferred tests left over at the end of the pass are dropped: what they write is reset by the
+        // `finally` below or is scratch. `replay_from..i` are the clusters whose hole test is outstanding (those that are
+        // pinched and unremoved; `removed` is not written inside this pass).
+        #[cfg(not(feature = "verify-opt"))]
+        let mut replay_from = 0usize;
         for i in 0..n {
             if !self.alive(cx) {
                 break;
@@ -708,11 +718,42 @@ impl PlayerExec {
             if cx.sc.clusters.removed[i] || !cx.sc.clusters.pinched[i] {
                 continue;
             }
-            // Guard interior hole clusters so hole crenellations are not falsely annexed.
-            if self.is_hole_cluster(cx, i) {
-                continue;
+            #[cfg(not(feature = "verify-opt"))]
+            {
+                if !self.evaluate_pinch_candidates(cx, i, max_territory_area, true) {
+                    continue; // deferred
+                }
+                for d in replay_from..i {
+                    if !cx.sc.clusters.removed[d] && cx.sc.clusters.pinched[d] {
+                        let _ = self.is_hole_cluster(cx, d);
+                    }
+                }
+                replay_from = i + 1;
             }
-            self.evaluate_pinch_candidates(cx, i, max_territory_area);
+            #[cfg(feature = "verify-opt")]
+            {
+                // The original order, plus the claim R1 rests on: when the hole test passes, the dry run says "capture" exactly
+                // when the real evaluation changes ownership.
+                let dry = self.evaluate_pinch_candidates(cx, i, max_territory_area, true);
+                if self.is_hole_cluster(cx, i) {
+                    continue;
+                }
+                let v0 = cx.st.territory_version;
+                self.evaluate_pinch_candidates(cx, i, max_territory_area, false);
+                assert_eq!(
+                    dry,
+                    v0 != cx.st.territory_version,
+                    "verify-opt: R1 dry run disagrees with the real evaluation (cluster {i})"
+                );
+            }
+            // Guard interior hole clusters so hole crenellations are not falsely annexed.
+            #[cfg(not(feature = "verify-opt"))]
+            {
+                if self.is_hole_cluster(cx, i) {
+                    continue;
+                }
+                self.evaluate_pinch_candidates(cx, i, max_territory_area, false);
+            }
         }
         // } finally { (a throw skips this; `cleanup_stale_index_map` runs it later)
         if self.cluster_territory_ids.is_some() {
@@ -1023,9 +1064,13 @@ impl PlayerExec {
 
     /// `evaluatePinchCandidates(cluster, maxTerritoryArea, tileTIds, territoryAreas)`
     /// (`:442-526`). Both optional arguments are always passed (`:288-293`).
-    fn evaluate_pinch_candidates(&mut self, cx: &mut Ctx, ci: usize, max_territory_area: i32) {
+    ///
+    /// R1: `dry == true` runs the same body read-only (it writes traversal / component scratch only) and returns `true` at
+    /// the first point where the real body would capture (the branch that conquers); `dry == false` is the TS body and returns
+    /// `false`.
+    fn evaluate_pinch_candidates(&mut self, cx: &mut Ctx, ci: usize, max_territory_area: i32, dry: bool) -> bool {
         if !self.alive(cx) {
-            return;
+            return false;
         }
         let me = self.me();
         let mut pinch_gen = cx.sc.traversal.bump_generation();
@@ -1105,6 +1150,12 @@ impl PlayerExec {
             if is_enclosed(&cx.st.map, &mut cx.sc.traversal, me, start, bx) {
                 let capturing = get_capturing_player(cx.st, self.player, &cx.sc.clusters.component);
                 if let Some(capturing) = capturing {
+                    if dry {
+                        #[cfg(feature = "mut-r1")]
+                        return false; // mutation check (never enabled in a real build): the dry run denies every capture
+                        #[cfg(not(feature = "mut-r1"))]
+                        return true;
+                    }
                     if cx.st.player(self.player).num_tiles_owned() as usize == comp_len {
                         cx.conquer_player(capturing, self.player);
                     }
@@ -1115,6 +1166,7 @@ impl PlayerExec {
                 }
             }
         }
+        false
     }
 
     /// `initClusterTerritories(clusters)` (`:528-538`).

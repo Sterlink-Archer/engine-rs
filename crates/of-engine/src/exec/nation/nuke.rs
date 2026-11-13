@@ -998,7 +998,7 @@ impl NationExec {
         cx.st.player(target).player_type() != PlayerType::Bot
             && !cx.st.player(player).is_friendly(target, false)
             && self.attack_strike_troops(cx, target) >= cx.st.player(target).troops() * STRIKE_MIN_STACK_RATIO
-            && cx.st.player(player).shares_border_with(target)
+            && cx.shares_border(player, target)
     }
 
     /// `nukeBehavior.followUpStrikes()` (`:535-568`): called every tick; attacks a strike's

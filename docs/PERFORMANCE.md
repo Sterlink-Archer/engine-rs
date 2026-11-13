@@ -46,3 +46,37 @@ TrainStation 6%, TradeShip 5%, Warship 5%. At the end: `maybeAttack` 34% (water 
 bounded search ~16% self), AttackExecution 11%, `removeClusters` ~11%, nation structures 13%.
 
 Every change was gated on the sharded conformance corpus (see README, Conformance); memo changes were additionally run with the `verify-memos` feature (every memo hit is recomputed and asserted). Exactness arguments are in each commit message and doc comment; order-free rewrites have differential tests (`stable_key_sort_equals_timsort`, `hole_heap_equals_swap_heap`, `scanline_flood_equals_dfs_flood`, `flood8_scan_equals_dfs`).
+
+
+# v0.36.0 speed-up (measured 2026-11-13)
+
+Five engine-only optimisations on the v0.36.0 port, each bit-exact: the same tests on the same operands, or a result that is proved
+equal before it is used. They do not change any observable (the 222-trace corpus, which compares a digest of the key state every tick, passes
+222/222 before and after).
+
+| id | change | where |
+|---|---|---|
+| D1+A1 | `compute_nearby` / `shares_border_with` scan loops tell the player's own tiles apart first; the two tile arrays are hoisted into a read-only `GameMap::view()` (no per-tile enum dispatch) | `state/player.rs`, `map/game_map.rs` |
+| D2 | `shares_border_with` remembers a witness border tile per pair of players in `Scratch`; a hint is re-validated on every use and only ever answers `true`, `false` always comes from the scan | `scratch/hints.rs`, `Ctx::shares_border` |
+| C4 | the end-of-tick tile-list compaction runs every 8th tick (positions, tombstones and capacities are not part of any state) | `state/game.rs` |
+| R1 | `removeClusters` pinch pass: the `isHoleCluster` test is deferred until a read-only dry run says the cluster would be captured, then replayed in index order on the unchanged map | `exec/player.rs` |
+| R2 | component labels (and the 4-connectivity flag) survive the loss of a bridge tile: a bounded two-sided search proves reconnection or relabels the closed pocket, falling back to the flood when the budget is hit | `map/conn4.rs`, `state/game.rs` |
+
+Feature `verify-opt` (test builds only) re-runs the original sequence beside R1's and asserts equal; `mut-r1` makes the dry run deny every
+capture, to prove the corpus can fail (it does: 2 of 19 sampled traces diverge with it, 19 of 19 pass with `verify-opt`). Two more tries (a tribe early-exit scan and an integer remainder in the attack-phase
+test) measured no gain and were not kept.
+
+Measurement: 2026-11-13, NVIDIA GH200 (aarch64, Neoverse-V2), one pinned core (`taskset -c 47`), release (`lto=fat`, `codegen-units=1`), default
+features, `engine-rs bench`, base (the first commit) and new binaries alternating. The box was shared with other jobs on other cores, so absolute
+ticks/s are lower than the quiet 2026-11-05 record above (the World game ran at 492 to 551 ticks/s here against 747 then, on an earlier pin);
+only the paired comparison is meaningful.
+
+| scenario | runs each | base median | new median | change | ticks/s base to new |
+|---|---|---|---|---|---|
+| `RS-SMOKE-01` Iceland Compact, 600 ticks | 9 | 0.1078 s | 0.1057 s | -2.0% | 5,566 to 5,676 |
+| `RS-SMOKE-02` Australia Compact, 100 bots, 2,500 ticks | 9 | 0.8275 s | 0.7930 s | -4.2% | 3,021 to 3,153 |
+| `S-FFA-WORLD-IMP-p1ffa0001` World FFA, 14,131 ticks | 5 | 27.21 s | 25.65 s | -5.7% | 519 to 551 |
+
+Ranges (min to max) did not overlap on the two smoke scenarios (RS-SMOKE-02 base 0.823 to 0.837 s, new 0.778 to 0.803 s); on World the
+ranges overlap slightly (base 26.6 to 28.4 s, new 25.2 to 28.7 s, one noisy new run), so treat -5.7% as indicative.
+In our own nation-heavy self-play games (not part of this repository) the same changes measured about x1.3 on Normal-size 1v1 games and x1.07 on Compact ones; those were not re-measured here.

@@ -1012,19 +1012,24 @@ impl<'a> PlayerRef<'a> {
         let mut ns = OwnerSet::new();
         let map = self.map();
         let small_id = self.id.0;
+        let v = map.view();
+        let mut nbuf = [0u32; 4];
         for border in self.border_tiles().iter() {
-            // `map.forEachNeighbor(border, visit)` (N, S, W, E).
-            map.for_each_neighbor(border, |neighbor| {
-                if map.is_land(neighbor) && !map.is_impassable(neighbor) {
-                    if !map.has_owner(neighbor) && map.has_fallout(neighbor) {
-                        return;
-                    }
-                    let owner = map.owner_id(neighbor);
-                    if owner != small_id {
-                        ns.add(SmallId(owner));
-                    }
+            // `map.forEachNeighbor(border, visit)` (N, S, W, E). D1: the same tests on the same operands in the same order, but the
+            // player's own tiles (the common neighbour: they add nothing) are told apart first, from one owner read.
+            let n = map.neighbors4(border, &mut nbuf);
+            for &neighbor in &nbuf[..n] {
+                let owner = v.owner_id(neighbor);
+                if owner == small_id {
+                    continue;
                 }
-            });
+                if v.is_land(neighbor) && !v.is_impassable(neighbor) {
+                    if owner == 0 && v.has_fallout(neighbor) {
+                        continue; // `!hasOwner && hasFallout`
+                    }
+                    ns.add(SmallId(owner));
+                }
+            }
         }
         for n in self.shore_reachable_neighbors() {
             ns.add(n);
@@ -1088,11 +1093,46 @@ impl<'a> PlayerRef<'a> {
     pub fn shares_border_with(&self, other: Owner) -> bool {
         let map = self.map();
         let other_id = other.0;
+        let v = map.view();
         let mut nbuf = [0u32; 4];
         for border in self.border_tiles().iter() {
             let n = map.neighbors4(border, &mut nbuf);
             for &nb in &nbuf[..n] {
-                if map.owner_id(nb) == other_id {
+                if v.owner_id(nb) == other_id {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+    /// D2: [`Self::shares_border_with`] answering from witness hints when one still proves `true`. A hint is a border tile of
+    /// this player that touched `other` last time; it is believed only after it is re-checked against the live state (still in the
+    /// border list, still next to a tile of `other`), so the answer is the scan's answer; `false` always comes from the scan.
+    pub fn shares_border_with_hinted(&self, other: Owner, hints: &mut crate::scratch::hints::BorderHints) -> bool {
+        use crate::scratch::hints::BorderHints;
+        let map = self.map();
+        let other_id = other.0;
+        let v = map.view();
+        let mut nbuf = [0u32; 4];
+        let key = BorderHints::key(self.id.0, other_id);
+        let land_index = &self.st.statics.land_index;
+        for b in hints.witnesses(key) {
+            // a foreign hint (another game's map on this thread) may be out of range here: bounds first
+            if !BorderHints::is_none(b)
+                && (b as usize) < land_index.len()
+                && self.st.pos_border().has(self.border_tiles(), land_index, b)
+            {
+                let n = map.neighbors4(b, &mut nbuf);
+                if nbuf[..n].iter().any(|&nb| v.owner_id(nb) == other_id) {
+                    return true;
+                }
+            }
+        }
+        for border in self.border_tiles().iter() {
+            let n = map.neighbors4(border, &mut nbuf);
+            for &nb in &nbuf[..n] {
+                if v.owner_id(nb) == other_id {
+                    hints.record(key, border);
                     return true;
                 }
             }

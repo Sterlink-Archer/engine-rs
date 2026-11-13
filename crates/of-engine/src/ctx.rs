@@ -15,7 +15,7 @@
 //!
 //! Owner: **P1** (FILE_MAP §2 foundations).
 
-use crate::ids::TileRef;
+use crate::ids::{Owner, SmallId, TileRef};
 use crate::scratch::Scratch;
 use crate::state::State;
 
@@ -62,6 +62,11 @@ impl<'a> Ctx<'a> {
     #[inline]
     pub fn reborrow(&mut self) -> Ctx<'_> {
         Ctx { st: &mut *self.st, sc: &mut *self.sc, jr: self.jr.as_deref_mut() }
+    }
+    /// D2: `st.player(me).sharesBorderWith(other)` through the witness hints of the scratch (the same answer as the scan).
+    #[inline]
+    pub fn shares_border(&mut self, me: SmallId, other: Owner) -> bool {
+        self.st.player(me).shares_border_with_hinted(other, &mut self.sc.border_hints)
     }
     /// The read-only view with scratch, for queries.
     #[inline]

@@ -908,9 +908,7 @@ impl Ctx<'_> {
         if prev.is_player() {
             let d = self.st.player_data(prev);
             if (d.conn4 || d.comps.valid) && !conn4::loss_keeps(&self.st.map, tile, prev.0) {
-                let d = self.st.player_data_mut(prev);
-                d.conn4 = false;
-                d.comps.valid = false;
+                self.conn4_loss_failed(tile, prev);
             } else if d.comps.valid {
                 let c = self.st.comp_labels.v[tile as usize] as usize; // in-range: sized while valid
                 let d = self.st.player_data_mut(prev);
@@ -936,6 +934,40 @@ impl Ctx<'_> {
                         self.st.comp_labels.v[tile as usize] = c; // in-range: sized while valid
                     }
                 }
+            }
+        }
+    }
+    /// R2: the ring rule failed for `tile` leaving `prev`'s territory. Settle by a bounded search whether the pieces around the
+    /// tile stay connected (labels kept, conn4 kept), whether it was a cut tile (closed pockets relabelled, conn4 cleared) or give
+    /// up as before (both cleared). Only a state that keeps labels (`comp_labels.enabled`) searches: a fork keeps the old rule.
+    #[inline(never)]
+    fn conn4_loss_failed(&mut self, tile: TileRef, prev: SmallId) {
+        use crate::map::conn4::{self, CompLabels, Loss};
+        let st = &mut *self.st;
+        let pl = &mut st.players[prev.player_index()]; // in-range: a live player
+        let outcome =
+            if st.comp_labels.enabled && st.comp_labels.v.len() >= st.map.width() as usize * st.map.height() as usize {
+                let CompLabels { v, search, .. } = &mut st.comp_labels;
+                if pl.comps.valid {
+                    let c = v[tile as usize]; // in-range: sized while valid
+                    conn4::loss_search(&st.map, prev.0, tile, v, search, Some((c, &mut pl.comps.sizes)))
+                } else {
+                    conn4::loss_search(&st.map, prev.0, tile, &mut [], search, None)
+                }
+            } else {
+                Loss::Budget
+            };
+        match outcome {
+            Loss::Connected => {
+                if pl.comps.valid {
+                    let c = st.comp_labels.v[tile as usize] as usize; // in-range: sized while valid
+                    pl.comps.sizes[c] -= 1; // in-range: labels of owned tiles index sizes
+                }
+            }
+            Loss::Split => pl.conn4 = false,
+            Loss::Budget => {
+                pl.conn4 = false;
+                pl.comps.valid = false;
             }
         }
     }
@@ -1240,6 +1272,13 @@ impl Ctx<'_> {
     /// of the live count (players' `_tiles`/`_borderTiles`, attack borders). No cursor survives
     /// a tick boundary.
     pub fn end_of_tick_maintenance(&mut self) {
+        // C4: compaction changes no observable (tileset.rs: positions, tombstones and capacities are not part of any state
+        // the game can read; `dense_len` is read by no game code), so the lists are only visited every 8th tick: the tombstones
+        // of at most 8 ticks of churn wait, and the compaction (the real cost: a random `pos_set` write per live entry) runs
+        // at the same 25 % threshold on a list that has had longer to fill.
+        if self.st.ticks % 8 != 0 {
+            return;
+        }
         let st = &mut *self.st;
         let land_index = &st.statics.land_index;
         for p in st.players.iter_mut() {

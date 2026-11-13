@@ -27,11 +27,13 @@
 //! | `astar_rail` | `_railChainCache` rail chain (`PathFinder.ts:171-183`) | P4b |
 //! | `astar_station` | `StationPathFinder.aStar` (`PathFinder.Station.ts:14`) | P4b |
 //! | `clusters` | `PlayerExecution.removeClusters` per-call arrays | P6 |
+//! | `border_hints` | (Rust only, D2) witness hints for `sharesBorderWith` | perf1 |
 //!
 //! Owner: **P1** (FILE_MAP §2 foundations).
 
 pub mod bfs;
 pub mod clusters;
+pub mod hints;
 pub mod path;
 pub mod traversal;
 pub mod water;
@@ -63,6 +65,7 @@ pub struct Scratch {
     pub astar_rail: path::AStarRailScratch,
     pub astar_station: path::AStarStationScratch,
     pub clusters: clusters::ClusterScratch,
+    pub border_hints: hints::BorderHints,
 }
 
 impl Scratch {
@@ -85,6 +88,7 @@ impl Scratch {
             astar_rail,
             astar_station,
             clusters,
+            border_hints: _,
         } = self; // exhaustive: a new field must be added here too
         traversal.prepare_step();
         bfs_main.prepare_step();
@@ -114,6 +118,7 @@ impl Scratch {
             astar_rail,
             astar_station,
             clusters,
+            border_hints: _,
         } = self;
         traversal.after_caught_throw();
         bfs_main.after_caught_throw();

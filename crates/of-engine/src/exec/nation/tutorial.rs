@@ -44,7 +44,7 @@ pub fn tutorial_silo(cx: &mut Ctx, nation: SmallId, fire: bool) {
             if cx.st.player(nation).units_constructed(UnitType::MissileSilo) > 0 {
                 return;
             }
-            if !cx.st.player(nation).shares_border_with(human) {
+            if !cx.shares_border(nation, human) {
                 return;
             }
             let Some(tile) = silo_tile(cx.st, nation) else {

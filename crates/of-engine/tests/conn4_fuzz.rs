@@ -166,6 +166,8 @@ fn conn4_flag_never_claims_a_disconnected_territory() {
     };
     let (mut kept_on_loss, mut kept_on_gain, mut cleared, mut checks) = (0u64, 0u64, 0u64, 0u64);
     let (mut label_checks, mut multi_comp_checks) = (0u64, 0u64);
+    // R2: losses where the ring rule fails and the labels (and conn4) survive: through a connected result or a split with relabelled pockets
+    let (mut kept_labels_split, mut kept_labels_nosplit, mut kept_conn4_ring_fail) = (0u64, 0u64, 0u64);
     // (x0, y0, size): two corners (map edges) and the middle; small windows => dense contact
     for &(x0, y0, sz) in &[(0u32, 0u32, 14u32), (86, 86, 14), (40, 40, 10), (0, 50, 18)] {
         for round in 0..6 {
@@ -192,6 +194,16 @@ fn conn4_flag_never_claims_a_disconnected_territory() {
                 let t = (y0 + (next() % u64::from(sz)) as u32) * w + x0 + (next() % u64::from(sz)) as u32;
                 let owner_before = SmallId(cx.st.map.owner_id(t));
                 let flags_before: Vec<bool> = ps.iter().map(|&p| cx.st.player_data(p).conn4).collect();
+                // R2: (labels valid, component count) before the step, for the survival counters below
+                let comps_before: Vec<(bool, usize)> = ps
+                    .iter()
+                    .map(|&p| {
+                        (
+                            cx.st.player_data(p).comps.valid,
+                            if cx.st.player_data(p).comps.valid { components(cx.st, p).1.len() } else { 0 },
+                        )
+                    })
+                    .collect();
                 if next() % 25 == 0 {
                     if owner_before.is_player() {
                         cx.player_mut(owner_before).relinquish(t);
@@ -221,6 +233,9 @@ fn conn4_flag_never_claims_a_disconnected_territory() {
                         assert!(connected(cx.st, p), "conn4 set on a disconnected territory: player {p:?} tile {t}");
                         if flags_before[i] && owner_before == p && cx.st.map.owner_id(t) != p.0 {
                             kept_on_loss += 1;
+                            if !of_engine::map::conn4::loss_keeps(&cx.st.map, t, p.0) {
+                                kept_conn4_ring_fail += 1; // the ring rule failed and the search still proved connectivity (R2)
+                            }
                         }
                         if flags_before[i] && owner_before != p && cx.st.map.owner_id(t) == p.0 {
                             kept_on_gain += 1;
@@ -233,6 +248,14 @@ fn conn4_flag_never_claims_a_disconnected_territory() {
                         cx.st.player_data_mut(p).conn4 = true;
                     }
                     if cx.st.player_data(p).comps.valid {
+                        if comps_before[i].0 && owner_before == p && cx.st.map.owner_id(t) != p.0 {
+                            let after = components(cx.st, p).1.len();
+                            if after > comps_before[i].1 {
+                                kept_labels_split += 1; // the territory split and the labels were kept (R2 relabelled the pocket)
+                            } else {
+                                kept_labels_nosplit += 1;
+                            }
+                        }
                         check_labels(cx.st, p);
                         label_checks += 1;
                         if cx.st.player_data(p).comps.sizes.iter().filter(|&&s| s > 0).count() > 1 {
@@ -258,8 +281,12 @@ fn conn4_flag_never_claims_a_disconnected_territory() {
     }
     eprintln!(
         "conn4 fuzz: checks {checks}, kept on loss {kept_on_loss}, on gain {kept_on_gain}, cleared {cleared}; \
-         label checks {label_checks} (multi-component {multi_comp_checks})"
+         label checks {label_checks} (multi-component {multi_comp_checks}); R2: labels kept across a split {kept_labels_split}, across a non-split loss {kept_labels_nosplit}, conn4 kept across a ring failure {kept_conn4_ring_fail}"
     );
     assert!(kept_on_loss > 1000 && kept_on_gain > 1000 && cleared > 100, "fuzz too weak");
     assert!(label_checks > 20_000 && multi_comp_checks > 5_000, "label fuzz too weak");
+    assert!(
+        kept_labels_split > 200 && kept_conn4_ring_fail > 50,
+        "R2 fuzz too weak (the search never settled a split / a ring failure)"
+    );
 }

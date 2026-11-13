@@ -652,7 +652,7 @@ impl NationExec {
         let difficulty = Self::atk_difficulty(cx);
         if (difficulty == Difficulty::Hard || difficulty == Difficulty::Impossible)
             && Self::attack_is_ffa(cx)
-            && cx.st.player(me).shares_border_with(attacker)
+            && cx.shares_border(me, attacker)
         {
             return self.attack_send_retaliation(cx, attacker);
         }
@@ -723,7 +723,7 @@ impl NationExec {
     /// down. Skips the trigger ratio.
     pub fn attack_strike(&mut self, cx: &mut Ctx, target: SmallId) -> bool {
         let me = self.nation_player();
-        if cx.st.player(me).is_friendly(target, false) || !cx.st.player(me).shares_border_with(target) {
+        if cx.st.player(me).is_friendly(target, false) || !cx.shares_border(me, target) {
             return false;
         }
         ai_attack::send_land_attack(self, cx, target, SendTroops::TroopsMinusReserve, Some(target))
@@ -734,7 +734,7 @@ impl NationExec {
     fn attack_find_crown_target(&mut self, cx: &mut Ctx, bordering_enemies: &[SmallId]) -> Option<SmallId> {
         let me = self.nation_player();
         let leader = find_runaway_leader(cx.st)?;
-        if !bordering_enemies.contains(&leader) || !cx.st.player(me).shares_border_with(leader) {
+        if !bordering_enemies.contains(&leader) || !cx.shares_border(me, leader) {
             return None;
         }
         let difficulty = Self::atk_difficulty(cx);
@@ -1257,7 +1257,7 @@ impl NationExec {
         let me = self.nation_player();
         match &self.atk().land_neighbors {
             Some(ln) => ln.contains(&target),
-            None => cx.st.player(me).shares_border_with(target),
+            None => cx.shares_border(me, target),
         }
     }
 

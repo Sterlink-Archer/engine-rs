@@ -114,6 +114,16 @@ corpus) and the profile are in [docs/PERFORMANCE.md](docs/PERFORMANCE.md). That 
 re-measured on v0.36.0**, and the TS reference harness is not part of this repository. Re-run the
 Rust side with `engine-rs bench`.
 
+**Speed-up on v0.36.0 (2026-11-13).** The second commit of this repository adds five bit-exact engine optimisations
+(listed in [docs/PERFORMANCE.md](docs/PERFORMANCE.md), section "v0.36.0 speed-up"). Same machine, same pinned core (NVIDIA GH200,
+Neoverse-V2, one core), default features, base and new binaries run alternately, median wall time per run:
+Australia smoke `RS-SMOKE-02` (100 bots, 2,500 ticks) 0.828 s to 0.793 s (**-4.2%**, 3,020 to 3,153 ticks/s, 9 runs each);
+`RS-SMOKE-01` (Iceland, 600 ticks) 0.108 s to 0.106 s (-2%); World FFA to the win (72 nations, 400 tribes, 14,131 ticks,
+`S-FFA-WORLD-IMP-p1ffa0001`, not shipped here) 27.2 s to 25.6 s (**-5.7%**, 519 to 551 ticks/s, 5 runs each). The games are
+identical: the 222-trace corpus still passes 222/222. The gain is modest on a pure upstream game; in our own
+nation-heavy self-play it measured larger (about x1.3), because those games spend more of their time in the scans that the
+optimisations shortcut. The figures in the table below were taken before this commit.
+
 Other figures we have, with their sources. **They come from different machines, maps and
 configurations, so cross-row comparisons are indicative only**; only the rows marked "this repo"
 were measured on the code exported here.

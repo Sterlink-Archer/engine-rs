@@ -130,6 +130,37 @@ impl TileStateBuf {
     }
 }
 
+/// See [`GameMap::view`].
+#[derive(Clone, Copy)]
+pub struct TileView<'a> {
+    st: &'a [u16],
+    tb: &'a [u8],
+}
+
+impl TileView<'_> {
+    /// [`GameMap::owner_id`].
+    #[inline(always)]
+    pub fn owner_id(&self, r: TileRef) -> u16 {
+        self.st[r as usize] & PLAYER_ID_MASK // in-range: r is a valid tile ref
+    }
+    /// [`GameMap::has_fallout`].
+    #[inline(always)]
+    pub fn has_fallout(&self, r: TileRef) -> bool {
+        self.st[r as usize] & (1 << FALLOUT_BIT) != 0 // in-range: r is a valid tile ref
+    }
+    /// [`GameMap::is_land`].
+    #[inline(always)]
+    pub fn is_land(&self, r: TileRef) -> bool {
+        self.tb[r as usize] & (1 << IS_LAND_BIT) != 0 // in-range: r is a valid tile ref
+    }
+    /// [`GameMap::is_impassable`].
+    #[inline(always)]
+    pub fn is_impassable(&self, r: TileRef) -> bool {
+        let t = self.tb[r as usize]; // in-range: r is a valid tile ref
+        t & (1 << IS_LAND_BIT) != 0 && (t & MAGNITUDE_MASK) == IMPASSABLE_MAGNITUDE
+    }
+}
+
 /// `GameMapImpl` data (`GameMap v1` snapshot fields derive from it: width, height, edit
 /// lists from `pristine_edits` + `terrain`, fallout/defense lists from `state`, counters).
 #[derive(StateClone, Debug, Default)]
@@ -218,6 +249,15 @@ impl GameMap {
     #[inline]
     fn tb(&self, r: TileRef) -> u8 {
         self.terrain[r as usize] // in-range: r is a valid tile ref (callers pass map refs)
+    }
+
+    /// A1: a read-only view of the two tile arrays for hot scan loops. It hoists the `TileStateBuf` enum dispatch and the
+    /// `Arc<[u8]>` deref of [`GameMap::owner_id`] / [`GameMap::is_land`] / ... out of the loop; every method does exactly the
+    /// work of the `GameMap` method of the same name. Main map only: for the all-zero minimap state the view is empty and every read
+    /// panics (no hot loop runs on the minimap).
+    #[inline]
+    pub fn view(&self) -> TileView<'_> {
+        TileView { st: self.state.as_slice().unwrap_or(&[]), tb: &self.terrain }
     }
 
     pub fn num_tiles_with_fallout(&self) -> u32 {

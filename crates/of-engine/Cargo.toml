@@ -13,6 +13,10 @@ prng-trace = ["of-det/prng-trace"]
 stats-full = []
 # Recompute every exact memo on each hit and assert equality (G11).
 verify-memos = []
+# Shadow checks for the bit-exact optimisations (dry-run vs real evaluation): the original sequence is re-run beside the new one and asserted equal. Test builds only.
+verify-opt = []
+# Mutation check for the pinch dry run (denies every capture); proves the identity gate can fail. Never enable in a real build.
+mut-r1 = []
 # t409: wall-clock probes per execution kind / game phase / step section (src/prof.rs); profiling only.
 prof = []
 

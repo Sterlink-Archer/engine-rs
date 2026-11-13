@@ -28,6 +28,12 @@
 //! - loss of `t` (label `c`): the loss rule above (applied to `c`, the only component containing
 //!   `t`'s owned 4-neighbours) keeps `c \ {t}` connected → `sizes[c] -= 1`; else invalid.
 //!
+//! - loss of `t` when the ring rule fails (R2): [`loss_search`] runs a bounded lock-step search over the territory minus
+//!   `t`, from each owned 4-neighbour of `t`. Searches that meet are one component; a search whose frontier runs dry has seen a
+//!   whole component of `T \ {t}` (a closed pocket). All meet: the component is still connected (`sizes[c] -= 1`, conn4 stays).
+//!   All but at most one class closed: the closed pockets get fresh labels (`sizes[c]` shrinks by `t` and their sizes) and conn4
+//!   is cleared; the one open class keeps `c`. Budget exceeded: invalid, as before.
+//!
 //! Labels are not cloned with the state: a fork gets disabled labels and invalid memos, so it
 //! keeps TS's flood (and its pre-H5 clone and memory cost); only a state built by `Game::new` /
 //! `create_state` (the RL envs, a search root) maintains labels. conn4 needs no labels and is
@@ -141,17 +147,19 @@ pub struct CompLabels {
     pub enabled: bool,
     /// Label per tile.
     pub v: Vec<u32>,
+    /// Scratch of [`loss_search`] (R2); never state.
+    pub search: SplitSearch,
 }
 
 impl Default for CompLabels {
     fn default() -> Self {
-        CompLabels { enabled: true, v: Vec::new() }
+        CompLabels { enabled: true, v: Vec::new(), search: SplitSearch::default() }
     }
 }
 
 impl Clone for CompLabels {
     fn clone(&self) -> Self {
-        CompLabels { enabled: false, v: Vec::new() }
+        CompLabels { enabled: false, v: Vec::new(), search: SplitSearch::default() }
     }
 }
 impl crate::plain::PlainState for CompLabels {}
@@ -165,6 +173,216 @@ impl CompLabels {
             self.v = vec![0; n];
         } else if self.v.len() < n {
             self.v.resize(n, 0);
+        }
+    }
+}
+
+/// Tiles the lock-step search may visit before it gives up (the territory is then invalidated and flooded, as before R2).
+pub const SEARCH_BUDGET: usize = 512;
+
+/// Scratch of [`loss_search`]: a per-tile stamp array of its own (the shared traversal scratch cannot be used: `conquer` runs
+/// inside passes that hold stamp windows of it), and one visit list per source.
+#[derive(Debug, Default)]
+pub struct SplitSearch {
+    stamp: Vec<u32>,
+    gen_no: u32,
+    q: [Vec<TileRef>; 4],
+}
+
+/// What [`loss_search`] found.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Loss {
+    /// `T \ {t}` has the same number of components as `T` around `t`: everything that touched `t` is still connected.
+    Connected,
+    /// `t` was a cut tile: the closed pockets were relabelled (when sizes were given) and `T \ {t}` has several components.
+    Split,
+    /// The budget ran out before the question was settled: the caller invalidates.
+    Budget,
+}
+
+/// `me` is about to lose `t` (still `me`'s in `map`), `T` was connected per component, and the ring rule failed. Decide, with a
+/// bounded search, whether the pieces around `t` stay connected. With `comps = Some((c, sizes))` (the label `c` of `t`, the
+/// component sizes) a split also relabels every closed pocket with a fresh label and updates `sizes`; `labels` are the per-tile
+/// labels. `Connected`/`Split` are proofs: a path found between two sources is a path; a frontier that ran dry has enumerated a
+/// whole 4-connected component of `T \ {t}`; the one class left open is, by elimination, the rest of the component.
+#[inline(never)]
+pub fn loss_search(
+    map: &GameMap,
+    me: u16,
+    t: TileRef,
+    labels: &mut [u32],
+    ss: &mut SplitSearch,
+    comps: Option<(u32, &mut Vec<i32>)>,
+) -> Loss {
+    let out = loss_search_inner(map, me, t, labels, ss, comps);
+    #[cfg(feature = "verify-opt")]
+    verify_loss(map, me, t, out);
+    out
+}
+
+/// `verify-opt`: an unbounded flood of `T \ {t}` from the first owned 4-neighbour of `t` must agree with the search's claim.
+#[cfg(feature = "verify-opt")]
+fn verify_loss(map: &GameMap, me: u16, t: TileRef, out: Loss) {
+    let mut nbuf = [0u32; 4];
+    let n = map.neighbors4(t, &mut nbuf);
+    let srcs: Vec<TileRef> = nbuf[..n].iter().copied().filter(|&u| map.owner_id(u) == me).collect();
+    if srcs.len() < 2 || out == Loss::Budget {
+        return;
+    }
+    let total = (map.width() as usize) * (map.height() as usize);
+    let mut seen = vec![false; total];
+    seen[srcs[0] as usize] = true;
+    let mut stack = vec![srcs[0]];
+    while let Some(x) = stack.pop() {
+        let m = map.neighbors4(x, &mut nbuf);
+        for &y in &nbuf[..m] {
+            if y != t && map.owner_id(y) == me && !seen[y as usize] {
+                seen[y as usize] = true;
+                stack.push(y);
+            }
+        }
+    }
+    let all = srcs.iter().all(|&u| seen[u as usize]);
+    assert_eq!(
+        out == Loss::Connected,
+        all,
+        "verify-opt: loss_search said {out:?} for tile {t} of player {me}, flood says connected={all}"
+    );
+}
+
+fn loss_search_inner(
+    map: &GameMap,
+    me: u16,
+    t: TileRef,
+    labels: &mut [u32],
+    ss: &mut SplitSearch,
+    comps: Option<(u32, &mut Vec<i32>)>,
+) -> Loss {
+    let mut src = [0u32; 4];
+    let mut nbuf = [0u32; 4];
+    let n = map.neighbors4(t, &mut nbuf);
+    let mut k = 0usize;
+    for &u in &nbuf[..n] {
+        if map.owner_id(u) == me {
+            src[k] = u;
+            k += 1;
+        }
+    }
+    if k < 2 {
+        return Loss::Connected; // the ring rule cannot fail with fewer than two owned 4-neighbours (module doc)
+    }
+    let total_tiles = (map.width() as usize) * (map.height() as usize);
+    if ss.stamp.len() < total_tiles {
+        ss.stamp.resize(total_tiles, 0);
+    }
+    if ss.gen_no > (1 << 31) {
+        ss.stamp.fill(0);
+        ss.gen_no = 0;
+    }
+    let base = ss.gen_no + 1;
+    ss.gen_no += k as u32; // int: k <= 4
+    let mut head = [0usize; 4];
+    #[allow(clippy::needless_range_loop)]
+    for i in 0..k {
+        ss.q[i].clear();
+        ss.q[i].push(src[i]);
+        ss.stamp[src[i] as usize] = base + i as u32; // in-range: valid tile ref
+    }
+    let mut total = k;
+    let mut parent = [0usize, 1, 2, 3]; // DSU over the sources
+    fn find(p: &mut [usize; 4], mut x: usize) -> usize {
+        while p[x] != x {
+            p[x] = p[p[x]];
+            x = p[x];
+        }
+        x
+    }
+    loop {
+        let mut progressed = false;
+        #[allow(clippy::needless_range_loop)]
+        for i in 0..k {
+            if head[i] >= ss.q[i].len() {
+                continue;
+            }
+            progressed = true;
+            let x = ss.q[i][head[i]];
+            head[i] += 1;
+            let m = map.neighbors4(x, &mut nbuf);
+            for &y in &nbuf[..m] {
+                if y == t || map.owner_id(y) != me {
+                    continue;
+                }
+                let s = ss.stamp[y as usize]; // in-range: valid tile ref
+                if s >= base {
+                    let j = (s - base) as usize; // stamps of this search only: base.. base + k
+                    let (a, b) = (find(&mut parent, i), find(&mut parent, j));
+                    if a != b {
+                        parent[a] = b;
+                    }
+                } else {
+                    ss.stamp[y as usize] = base + i as u32;
+                    ss.q[i].push(y);
+                    total += 1;
+                    if total > SEARCH_BUDGET {
+                        return Loss::Budget;
+                    }
+                }
+            }
+        }
+        // classes: roots of the sources; a class is open while any member still has frontier
+        let mut root = [0usize; 4];
+        let mut classes = 0usize;
+        let mut open = [false; 4];
+        let mut size = [0usize; 4];
+        for i in 0..k {
+            let r = find(&mut parent, i);
+            root[i] = r;
+            if size[r] == 0 {
+                classes += 1;
+            }
+            size[r] += ss.q[i].len();
+            if head[i] < ss.q[i].len() {
+                open[r] = true;
+            }
+        }
+        if classes == 1 {
+            return Loss::Connected;
+        }
+        let open_classes = (0..k).filter(|&i| root[i] == i && open[i]).count();
+        if open_classes <= 1 || !progressed {
+            // every class but at most one is a closed pocket: that is the whole answer
+            let keep = if open_classes == 1 {
+                (0..k).find(|&i| root[i] == i && open[i]).unwrap_or(0)
+            } else {
+                // all closed: keep the biggest class's label (relabel the smaller ones)
+                (0..k)
+                    .filter(|&i| root[i] == i)
+                    .fold(None, |best: Option<usize>, i| match best {
+                        Some(b) if size[b] >= size[i] => Some(b),
+                        _ => Some(i),
+                    })
+                    .unwrap_or(0)
+            };
+            if let Some((c, sizes)) = comps {
+                let mut removed = 1i32; // `t` itself
+                for r in (0..k).filter(|&i| root[i] == i && i != keep) {
+                    let label = sizes.len() as u32; // int: < number of tiles
+                    let mut cnt = 0i32;
+                    #[allow(clippy::needless_range_loop)]
+                    for i in 0..k {
+                        if root[i] == r {
+                            for &x in &ss.q[i] {
+                                labels[x as usize] = label; // in-range: valid tile ref, labels cover the map while valid
+                            }
+                            cnt += ss.q[i].len() as i32; // int: <= SEARCH_BUDGET
+                        }
+                    }
+                    sizes.push(cnt);
+                    removed += cnt;
+                }
+                sizes[c as usize] -= removed; // in-range: `c` labels an owned tile
+            }
+            return Loss::Split;
         }
     }
 }
