@@ -7,7 +7,7 @@
 //! scan runs, so no invalidation rule exists to get wrong, and a `false` answer always comes from the scan. Not game state, never
 //! cloned, never part of CS.
 //!
-//! Owner: **P1** (scratch foundations; t949 addition).
+//! Owner: **P1**.
 
 use super::StepReset;
 use crate::ids::TileRef;

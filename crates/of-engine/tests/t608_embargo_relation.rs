@@ -18,7 +18,7 @@
 //! - H1, engine half. `EmbargoExec::tick` (`exec/embargo.rs`) is `add_embargo` / `stop_embargo`
 //!   with no cooldown. After Stop, `has_manual_embargo_against` is false, so the next Start
 //!   takes effect again. The v3 mask that makes Start/Stop a free toggle lives in
-//!   `sp-v3p2` `masks.rs`, not in this crate; this binary only shows the engine accepts the
+//!   the research harness's mask code, not in this crate; this binary only shows the engine accepts the
 //!   re-start. A tribe has no ports and no embargo reader (`exec/tribe`), so `toggle_tribe`
 //!   should leave the nation's relation, and both tile and gold series, on the control path.
 //! - H2, timing. The −20 and the +20 are `NationExec::update_relations_from_embargos`
@@ -40,8 +40,8 @@
 //! EmbargoStop sent at `t0 + 400` is visible at `t0 + 401`. The preload mark is two steps before
 //! `t0`, so the −40 has already been applied when the window opens.
 //!
-//! Map load is `of-rl`'s `load_statics` (`config.rs`): Compact = `map4x.bin` + `map16x.bin`.
-//! Spawn / step / conquer follow `of-rl` `tests/v3_state_util` (`new_game`, `G::step`, `G::give`).
+//! Map load is the research harness's map loader: Compact = `map4x.bin` + `map16x.bin`.
+//! Spawn / step / conquer follow the research harness's test helpers.
 //! No `Attack` intent is sent. If the spawn disks (Euclidean radius 4, `exec/util.rs`) do not
 //! share a border after the spawn phase, the gap is closed with `Player::conquer` — the same
 //! test-setup mutator as `G::give` — before `t0`, identical on every arm.
@@ -619,7 +619,7 @@ fn start_info() -> GameStartInfo {
     .expect("GameStartInfo")
 }
 
-/// `of-rl` `load_statics`: Compact reads `map4x.bin` + `map16x.bin`.
+/// The research harness's map loader: Compact reads `map4x.bin` + `map16x.bin`.
 fn load_statics(gs: &GameStartInfo) -> Arc<MapStatics> {
     let c = &gs.config;
     let key: String = c.game_map.to_lowercase().chars().filter(|ch| ch.is_ascii_alphanumeric()).collect();
@@ -672,9 +672,9 @@ fn upstream_roots() -> Vec<PathBuf> {
         v.push(PathBuf::from(d));
     }
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
-    // of-rl `EnvConfig::upstream`: `<sp-v3p2>/../upstream` == `<13_openfront>/upstream`.
+    // Default location of an upstream checkout, relative to this crate (a sibling of the repository root).
     v.push(manifest.join("../../../upstream"));
-    // `view_shim_guard::upstream` is `<25_4fun>/upstream/packages`.
+    // One level further up, for checkouts that keep upstream next to the repository.
     v.push(manifest.join("../../../../upstream"));
     v
 }

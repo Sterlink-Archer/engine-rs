@@ -45,7 +45,7 @@ at the start: nation `maybeAttack` 32% (boat-route planning 26%: `closestShoreBy
 TrainStation 6%, TradeShip 5%, Warship 5%. At the end: `maybeAttack` 34% (water A* heap and
 bounded search ~16% self), AttackExecution 11%, `removeClusters` ~11%, nation structures 13%.
 
-Every change was gated on the sharded conformance corpus (see README, Conformance); memo changes were additionally run with the `verify-memos` feature (every memo hit is recomputed and asserted). Exactness arguments are in each commit message and doc comment; order-free rewrites have differential tests (`stable_key_sort_equals_timsort`, `hole_heap_equals_swap_heap`, `scanline_flood_equals_dfs_flood`, `flood8_scan_equals_dfs`).
+Every change was gated on the sharded conformance corpus (see [CONFORMANCE.md](CONFORMANCE.md)); memo changes were additionally run with the `verify-memos` feature (every memo hit is recomputed and asserted). Exactness arguments are in each commit message and doc comment; order-free rewrites have differential tests (`stable_key_sort_equals_timsort`, `hole_heap_equals_swap_heap`, `scanline_flood_equals_dfs_flood`, `flood8_scan_equals_dfs`).
 
 
 # v0.36.0 speed-up (measured 2026-11-13)
@@ -80,3 +80,51 @@ only the paired comparison is meaningful.
 Ranges (min to max) did not overlap on the two smoke scenarios (RS-SMOKE-02 base 0.823 to 0.837 s, new 0.778 to 0.803 s); on World the
 ranges overlap slightly (base 26.6 to 28.4 s, new 25.2 to 28.7 s, one noisy new run), so treat -5.7% as indicative.
 In our own nation-heavy self-play games (not part of this repository) the same changes measured about x1.3 on Normal-size 1v1 games and x1.07 on Compact ones; those were not re-measured here.
+
+# Speed summary and cross-machine figures
+
+Headline, measured 2026-11-05 on the earlier pin 5b75bd3 with this engine (the exported code is a
+descendant of it), World map, free-for-all with 72 Impossible nations and 400 tribes, 14,131 ticks,
+**one aarch64 core (NVIDIA GH200, Neoverse-V2), TS and Rust on the same core**, no digests:
+**747 ticks/s for the Rust engine against 156 ticks/s for the TS engine (4.79x)**; peak RSS 106 MB
+against 491 MB. Method, the step-by-step optimisation table (every step bit-exact, gated on the
+corpus) and the profile are in this file. That number was **not
+re-measured on v0.36.0**, and the TS reference harness is not part of this repository. Re-run the
+Rust side with `engine-rs bench`.
+
+**Speed-up on v0.36.0 (2026-11-13).** The second commit of this repository adds five bit-exact engine optimisations
+(listed in this file, section "v0.36.0 speed-up"). Same machine, same pinned core (NVIDIA GH200,
+Neoverse-V2, one core), default features, base and new binaries run alternately, median wall time per run:
+Australia smoke `RS-SMOKE-02` (100 bots, 2,500 ticks) 0.828 s to 0.793 s (**-4.2%**, 3,020 to 3,153 ticks/s, 9 runs each);
+`RS-SMOKE-01` (Iceland, 600 ticks) 0.108 s to 0.106 s (-2%); World FFA to the win (72 nations, 400 tribes, 14,131 ticks,
+`S-FFA-WORLD-IMP-p1ffa0001`, not shipped here) 27.2 s to 25.6 s (**-5.7%**, 519 to 551 ticks/s, 5 runs each). The games are
+identical: the 222-trace corpus still passes 222/222. The gain is modest on a pure upstream game; in our own
+nation-heavy self-play it measured larger (about x1.3), because those games spend more of their time in the scans that the
+optimisations shortcut. The figures in the table below were taken before this commit.
+
+Other figures we have, with their sources. **They come from different machines, maps and
+configurations, so cross-row comparisons are indicative only**; only the rows marked "this repo"
+were measured on the code exported here.
+
+| what | figure | hardware | source and caveats |
+|---|---|---|---|
+| Rust, World FFA (72 nations, 400 tribes) | 747 ticks/s | GH200 aarch64, 1 core | this file; earlier pin 5b75bd3; same-core TS run: 156 ticks/s |
+| TS, ranked-1v1 config (Australia, 400 tribes, no nations, 3k ticks) | ~195 ticks/s (5.2 ms/tick) | Intel Core Ultra 7 255H laptop, one P-core, solo | our recon of the upstream TS engine (Node 24, headless); laptop numbers drop 2 to 3.5x when all cores are busy |
+| TS, World FFA to the win, 472 players | ~302 ticks/s | same laptop P-core, solo | same recon; a different config from the 156 ticks/s row (that one is nation-heavy and ran on the GH200) |
+| Rust, Australia, 100 tribes/bots, 2,500 ticks | ~1,235 ticks/s, p95 step 1.9 ms | Intel Core Ultra 7 255H, one core, release | this repo, v0.36.0: `engine-rs bench --scenario tests/fixtures/RS-SMOKE-02`; no TS number for this scenario on this machine |
+| Forking a game: TS snapshot write + restore, World, mid-game | ~0.43 s (about 160 ms write + 270 ms restore, warm) | same laptop P-core | TS `snapshotGame`/`restoreGame`, measured by us (World tick 18,000) |
+| Forking a game: Rust pooled `clone_into`, World FFA | about 1 to 2 ms (p50 0.9 to 1.8 ms at ticks 2k to 14k) | GH200 aarch64, 1 core | this file; a fork is a state clone, not a serialise/parse round trip |
+| Forking a game: Rust pooled state fork, 1v1 Australia (Compact) | ~0.2 ms | GH200 aarch64, 1 core | an internal research harness around this engine, not reproducible from this repo |
+| Rust, 1v1 mix (Australia/Normal and Compact, opening to late game) | ~2,590 ticks/s per core (386 us/tick) | GH200 aarch64, 1 core | the same internal harness, with extra per-tick work around the engine; an indicative figure only |
+
+Reading the fork rows: the TS figure is the cost of serialising and restoring a World game, the Rust
+figures are in-memory state clones, and the machines differ, so treat the gap as indicative. The only
+like-for-like same-map pair is World FFA: about 0.43 s (TS, laptop) against 1 to 2 ms (Rust, GH200), roughly
+200 to 400x. The 1v1 Rust row has no TS counterpart measured on the same map.
+
+## Build features and build notes
+
+Maps are read from `$OF_UPSTREAM_DIR/resources/maps/<name>/` and default to the bundled `assets/`.
+Built and tested with Rust stable 1.96.0 (`rust-toolchain.toml` pins 1.96.0; the code uses edition 2024 let-chains, so a recent compiler is needed). Cargo features: `stats-full` (full
+`StatsImpl`, needed for the S/D digests; off for throughput builds), `verify-memos` (recompute and
+assert every exact memo), `prng-trace`, `prof`, `sampler`.

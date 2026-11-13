@@ -1,174 +1,70 @@
-# engine-rs: a bit-exact Rust port of the OpenFront.io game engine (unofficial)
+# engine-rs
 
-© OpenFront and Contributors. This is an **unofficial** derivative of the OpenFront.io engine, licensed
-AGPL-3.0-only. It is not affiliated with, endorsed by, or sponsored by OpenFront Inc. See [NOTICE](NOTICE).
+© OpenFront and Contributors. An **unofficial** Rust port of the OpenFront.io game engine, licensed AGPL-3.0.
+Not affiliated with, endorsed by, or sponsored by OpenFront.
 
-`engine-rs` is a deterministic Rust re-implementation of the OpenFront.io simulation: the same rules,
-the same tick loop, the same results, bit for bit. Given the same game configuration and the same
-sequence of player intents, it produces the same state on every tick as the TypeScript engine
-(`packages/engine` upstream), including the quirks that come from JavaScript semantics (`Math.round`,
-`ToInt32`, V8's TimSort comparator call order, `Map`/`Set` live iteration, `BigInt`, f32 stores).
+## What this is
 
-Smoke check, as run on this repository (x86_64, Rust 1.96.0): `engine-rs conform` on `RS-SMOKE-01` reports `PASS - 600 steps, K checked 601, D checked 13`, and on `RS-SMOKE-02` `PASS - 2500 steps, K checked 2501, D checked 26`.
+OpenFront is built by its authors and contributors, and every rule in this project comes from their work. `engine-rs` re-implements the
+game's simulation in Rust so that it plays out exactly the same way as the original TypeScript engine, tick for tick. Give it the same game
+setup and the same player actions and you get the same game. It only covers the simulation: no graphics, no server, no accounts.
 
-Why it exists: simulation research needs to run many games quickly and be sure that what it measures
-is the real game. A faster engine that is not exactly the game is useless for that, so exactness is
-the contract and the test suite is built around proving it.
+It grew out of a game-AI research project that needed to simulate a very large number of OpenFront games quickly. We are offering the
+engine back to the OpenFront team and community as a possible contribution.
 
-- **Upstream pin:** OpenFront.io **v0.36.0**, commit `0211f17b71efa762242b620b91ffa5d8439522e6`
-  (released 2026-11-09). It descends from `5b75bd3ad8f66325a727f7bcec47680a0cc07e63`, the earlier pin
-  that the golden vectors and the performance record in `docs/` were produced at.
-- **Size:** about 79k lines of Rust in 7 crates, no `unsafe` in the engine crates, edition 2024.
-- **Scope:** the game engine simulator only. Rules, determinism layer, conformance tooling, CLI,
-  benchmarks. It includes a faithful port of upstream's own nation (`NationExecution` and its seven
-  behaviours) and tribe/bot AI, because they are part of the game. It contains no player-strategy or
-  decision code of its own and no client/UI code.
+## Why it might be useful
 
-## Crates
+- **Replays:** re-run a recorded game and check that every moment matches.
+- **Fast simulation:** play out many games quickly, for example for research or balance experiments.
+- **Testing:** a second, independent implementation is a handy cross-check for the original engine when rules change.
+- **Research:** copying a whole game state is cheap, so you can try "what if" branches from any point.
 
-| crate | what it is |
-|---|---|
-| `of-det` | Deterministic leaf code with JS semantics: `Math.round`, int32 ops, sfc32 PRNG, `JsMap`/`JsSet` (live iteration), V8 TimSort, f32 binary heap, checked bigint, `exp`/`log`/`pow`/`atan2` reproduction. |
-| `of-canon` | The canonical state encoding (CS v1: sorted keys, safe-integer rule, strict decoder), FNV-64W hashes, section digests. |
-| `of-trace` | Reader for TS-generated traces, the comparison loop (first divergence, field-level localisation), and the `of-conform` tool. |
-| `of-vectors` | Checker for the golden vectors of `of-det` and the config formulas. |
-| `of-engine-derive` | `#[derive(StateClone)]`: field-wise `clone_from` for cheap, exact game forks. |
-| `of-engine` | The port itself: state, executions (attack, nukes, trains, boats, warships, alliances, nations, tribes ...), maps and pathfinding, the runner, the canonical-state exporter/loader. |
-| `of-cli` | The `engine-rs` binary: `conform`, `resume`, `bench`, `fork-bench`. |
+## How fast is it?
 
-## How conformance is checked against the TypeScript engine
+A live game runs at 10 ticks per second.
 
-The TS engine is the oracle. A trace is a recorded game made by running the real upstream engine:
+| | Original engine (TypeScript) | engine-rs |
+|---|---|---|
+| Playing a full World game, one CPU core | about 156 ticks per second | about 747 ticks per second (roughly 4.8x) |
+| Copying a whole mid-game state | about 0.4 seconds | about 1 to 2 milliseconds (roughly 200 to 400x) |
 
-- `scenario.json` (game config, map, start state), `turns.cse.zst` (every player intent per tick),
-- per-tick **key digests K** (one 64-bit FNV-64W hash per tick over the canonical key projection of the state),
-- **section digests** (11 sections of the canonical state) every N ticks,
-- **full state dumps** (and the full digest D) at chosen ticks, for field-level diffs.
+Rounded from our own measurements on a big World free-for-all game, on one CPU core (747 ticks per second is about 75 times live speed). The playing
+numbers were measured on a slightly earlier engine version and not re-measured since. The copying numbers compare different methods (the original
+saves and restores a game; engine-rs copies it in memory) on different machines, so treat that gap as a rough guide.
+The latest engine update adds a small extra gain of about 2 to 6 percent depending on the game. Details and the full tables are in [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 
-`engine-rs conform --scenario <dir>` replays the recorded intents through the Rust engine and compares
-digests tick by tick. On a mismatch it reports the first bad tick, which digest tripped, and (when a
-dump exists) the exact field or tile that differs. `engine-rs conform` exits 0 only if every tick matches.
+## Try it
 
-Evidence behind this repository (results from the development tree, which also contains the
-corpus; the corpus itself is about 220 MB and is not shipped here):
-
-- Full corpus on the v0.36.0 port: **222/222 traces pass** (100 CI, 2 regress, 112 nightly, 6 long
-  games up to ~28k ticks, 2 smoke), including every pin scenario plus the v0.36.0 additions (new
-  maps, island nations and bots, river-bend boat paths). The v0.36.0 gate ran on aarch64; the earlier
-  pin-era suite gave identical results on x86_64 and aarch64, with and without `target-cpu=native`
-  (Rust does not fuse `a*b+c` and has no fast-math, so the CPU target cannot change an f64 result).
-- Mutation checks: reverting one of the four v0.36.0 engine changes at a time makes 10, 62 and 64 of 215
-  traces fail for three of them; the fourth (weighted trade-port pick) is state-identical on the corpus.
-  The pre-v0.36.0 engine, run as a negative control, diverges. So the corpus is sensitive to the changes.
-- Golden vectors for `of-det` and the config formulas: 373,771 rows generated by the TS engine,
-  305,776 checked by `of-vectors` and passing, 0 failing; 72 are bigint rows beyond i128 (the port raises
-  an error instead of answering) and 67,923 are `EngineConfig` rows that need the game model, which
-  `of-engine`'s own `config/vectors.rs` test replays (all 22 config functions, bit-exact).
-  Per-function table: [docs/golden_vectors_per_function.md](docs/golden_vectors_per_function.md).
-
-## What is in this repository that you can run
-
-- `cargo test --workspace`: unit and integration tests, the golden vectors (`conformance/golden/vectors`,
-  about 13 MB, generated by the TS engine at the earlier pin 5b75bd3), the canonical-encoding table, and the
-  two smoke traces below.
-- Smoke traces `tests/fixtures/RS-SMOKE-01` (Iceland, Compact, 600 ticks) and `RS-SMOKE-02`
-  (Australia, Compact, 100 bots, 2500 ticks). They were recorded from the real TS engine at v0.36.0 and
-  contain per-tick digests, section digests and full dumps. The two maps they need are bundled in
-  `assets/` (CC BY-SA 4.0, see [NOTICE](NOTICE)).
-- The large corpus tests (`api_corpus`, `mod_snapshot_sections`, `p9_golden`, `schema_fields`, the
-  `resume` tests) are `#[ignore]`d here; point `OF_CORPUS_DIR` at a corpus and run `cargo test -- --ignored`.
-- Tests that need an upstream checkout (`t608`, `t615`, `view_shim_guard`) read `OF_UPSTREAM_DIR`.
-
-## Build and run
+You need [Rust](https://rustup.rs) (the repository pins the version it uses). Then, from the repository folder:
 
 ```
-cargo build --release -p of-cli --features stats-full   # conformance needs stats-full; or: scripts/build-release.sh [native|neoverse-v2|portable]
-cargo test --workspace
-tools/ci.sh                                   # fmt, clippy -D warnings, tests, golden vectors
-```
-
-```
-target/release/engine-rs version
-target/release/engine-rs conform --scenario tests/fixtures/RS-SMOKE-01      # replay vs TS digests (needs stats-full)
+cargo build --release -p of-cli --features stats-full
+target/release/engine-rs conform --scenario tests/fixtures/RS-SMOKE-01
 target/release/engine-rs conform --scenario tests/fixtures/RS-SMOKE-02
-target/release/engine-rs bench   --scenario tests/fixtures/RS-SMOKE-02      # ticks/s, allocations/tick
-target/release/engine-rs fork-bench --scenario tests/fixtures/RS-SMOKE-02 --at 1000,2000 --reps 20
-cargo build --release -p of-trace                                            # builds of-conform
-target/release/of-conform smoke tests/fixtures                               # digest-pipeline self-test
-target/release/of-vectors                                                    # golden vectors (exits 1 on any fail)
+target/release/engine-rs bench --scenario tests/fixtures/RS-SMOKE-02
+cargo build --release -p of-trace
+cargo test --workspace
 ```
 
-Maps are read from `$OF_UPSTREAM_DIR/resources/maps/<name>/` and default to the bundled `assets/`.
-Built and tested with Rust stable 1.96.0 (`rust-toolchain.toml` pins 1.96.0; the code uses edition 2024 let-chains, so a recent compiler is needed). Cargo features: `stats-full` (full
-`StatsImpl`, needed for the S/D digests; off for throughput builds), `verify-memos` (recompute and
-assert every exact memo), `prng-trace`, `prof`, `sampler`.
+The two `conform` commands replay small recorded games and should print `PASS`. `bench` prints a line of numbers; `ticksPerSecond` is your machine's speed. The last two lines build the trace checker and run the test suite.
 
-## Speed
+## How we know it is exact
 
-Headline, measured 2026-11-05 on the earlier pin 5b75bd3 with this engine (the exported code is a
-descendant of it), World map, free-for-all with 72 Impossible nations and 400 tribes, 14,131 ticks,
-**one aarch64 core (NVIDIA GH200, Neoverse-V2), TS and Rust on the same core**, no digests:
-**747 ticks/s for the Rust engine against 156 ticks/s for the TS engine (4.79x)**; peak RSS 106 MB
-against 491 MB. Method, the step-by-step optimisation table (every step bit-exact, gated on the
-corpus) and the profile are in [docs/PERFORMANCE.md](docs/PERFORMANCE.md). That number was **not
-re-measured on v0.36.0**, and the TS reference harness is not part of this repository. Re-run the
-Rust side with `engine-rs bench`.
+We ran test games (many maps and game modes) through the official TypeScript engine and recorded them, including a fingerprint of the key game
+state at every tick plus full snapshots at checkpoints. `engine-rs` replays the same player actions and compares its own fingerprints tick by tick.
+Across 222 recorded games it matched with no differences. If a single tick ever differs, the tool reports the first tick that disagrees and, where a
+snapshot exists, the exact field. The test suite also checks hundreds of thousands of small rule calculations against values produced by the original engine.
+The numbers, versions and limits are in [docs/CONFORMANCE.md](docs/CONFORMANCE.md).
 
-**Speed-up on v0.36.0 (2026-11-13).** The second commit of this repository adds five bit-exact engine optimisations
-(listed in [docs/PERFORMANCE.md](docs/PERFORMANCE.md), section "v0.36.0 speed-up"). Same machine, same pinned core (NVIDIA GH200,
-Neoverse-V2, one core), default features, base and new binaries run alternately, median wall time per run:
-Australia smoke `RS-SMOKE-02` (100 bots, 2,500 ticks) 0.828 s to 0.793 s (**-4.2%**, 3,020 to 3,153 ticks/s, 9 runs each);
-`RS-SMOKE-01` (Iceland, 600 ticks) 0.108 s to 0.106 s (-2%); World FFA to the win (72 nations, 400 tribes, 14,131 ticks,
-`S-FFA-WORLD-IMP-p1ffa0001`, not shipped here) 27.2 s to 25.6 s (**-5.7%**, 519 to 551 ticks/s, 5 runs each). The games are
-identical: the 222-trace corpus still passes 222/222. The gain is modest on a pure upstream game; in our own
-nation-heavy self-play it measured larger (about x1.3), because those games spend more of their time in the scans that the
-optimisations shortcut. The figures in the table below were taken before this commit.
+It is pinned to OpenFront v0.36.0 and only claims to match what the recorded games cover.
 
-Other figures we have, with their sources. **They come from different machines, maps and
-configurations, so cross-row comparisons are indicative only**; only the rows marked "this repo"
-were measured on the code exported here.
+## Credit and licence
 
-| what | figure | hardware | source and caveats |
-|---|---|---|---|
-| Rust, World FFA (72 nations, 400 tribes) | 747 ticks/s | GH200 aarch64, 1 core | `docs/PERFORMANCE.md`; earlier pin 5b75bd3; same-core TS run: 156 ticks/s |
-| TS, ranked-1v1 config (Australia, 400 tribes, no nations, 3k ticks) | ~195 ticks/s (5.2 ms/tick) | Intel Core Ultra 7 255H laptop, one P-core, solo | our recon of the upstream TS engine (Node 24, headless); laptop numbers drop 2 to 3.5x when all cores are busy |
-| TS, World FFA to the win, 472 players | ~302 ticks/s | same laptop P-core, solo | same recon; a different config from the 156 ticks/s row (that one is nation-heavy and ran on the GH200) |
-| Rust, Australia, 100 tribes/bots, 2,500 ticks | ~1,235 ticks/s, p95 step 1.9 ms | Intel Core Ultra 7 255H, one core, release | this repo, v0.36.0: `engine-rs bench --scenario tests/fixtures/RS-SMOKE-02`; no TS number for this scenario on this machine |
-| Forking a game: TS snapshot write + restore, World, mid-game | ~0.43 s (about 160 ms write + 270 ms restore, warm) | same laptop P-core | TS `snapshotGame`/`restoreGame`, measured by us (World tick 18,000) |
-| Forking a game: Rust pooled `clone_into`, World FFA | about 1 to 2 ms (p50 0.9 to 1.8 ms at ticks 2k to 14k) | GH200 aarch64, 1 core | `docs/PERFORMANCE.md`; a fork is a state clone, not a serialise/parse round trip |
-| Forking a game: Rust pooled state fork, 1v1 Australia (Compact) | ~0.2 ms | GH200 aarch64, 1 core | an internal research harness around this engine, not reproducible from this repo |
-| Rust, 1v1 mix (Australia/Normal and Compact, opening to late game) | ~2,590 ticks/s per core (386 us/tick) | GH200 aarch64, 1 core | the same internal harness, with extra per-tick work around the engine; an indicative figure only |
+This is a derivative of OpenFront.io's engine and all the game design belongs to OpenFront and its contributors. The code is AGPL-3.0, with the upstream additional terms (see [LICENSE](LICENSE) and
+[NOTICE](NOTICE)). The bundled map data is CC BY-SA 4.0 ([LICENSE-ASSETS](LICENSE-ASSETS)). OpenFront's proprietary assets are not included.
+Please use it on your own copy of the game or for offline research. The hosted service has its own terms.
 
-Reading the fork rows: the TS figure is the cost of serialising and restoring a World game, the Rust
-figures are in-memory state clones, and the machines differ, so treat the gap as indicative. The only
-like-for-like same-map pair is World FFA: about 0.43 s (TS, laptop) against 1 to 2 ms (Rust, GH200), roughly
-200 to 400x. The 1v1 Rust row has no TS counterpart measured on the same map.
+## Contributing and contact
 
-## Design documents
-
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): state layout, determinism rules, forking, the nation PRNG, performance gates.
-- [docs/PORTING_GUIDE.md](docs/PORTING_GUIDE.md): how each JS construct is ported and which Rust constructs are banned (`clippy.toml`).
-- [docs/FILE_MAP.md](docs/FILE_MAP.md): upstream TS file to Rust module map.
-
-## Limitations
-
-- Tracks one upstream version (v0.36.0). Other versions need their own port/regeneration of the
-  version-dependent tables (`tools/gen_p3_tables.py`) and a re-run of the corpus.
-- Conformance is proven against the corpus of recorded games, not for all possible games. It is strong
-  on what the corpus covers (many maps, modes, difficulties, nukes, MIRVs, rail, warships, alliances)
-  and weaker on anything the TS engine was never driven through.
-- Not ported: rendering, client, server/lobby code, accounts, persistence. Only the simulation.
-- Bigint values beyond i128 raise a loud error instead of continuing (JS BigInt is unbounded). The corpus never reaches it; a proof that no game can is not done.
-- The golden vectors in this repository were generated at the earlier pin 5b75bd3; the corpus above is at v0.36.0.
-- `engine-rs conform` needs recorded traces; making new ones needs the TS engine and its trace writer, which are not included.
-
-## Responsible use
-
-Use this on your own copy of the game or for offline research. It is not a way to automate the live
-service; OpenFront.io's terms of service govern the hosted game, and anything involving it should be
-agreed with OpenFront Inc. first.
-
-## License
-
-AGPL-3.0-only (LICENSE, including upstream's Section 7 additional terms). Map data in `assets/` and the
-small test maps are CC BY-SA 4.0 (LICENSE-ASSETS). Attribution and details: [NOTICE](NOTICE).
+Fixes and questions are welcome through GitHub issues. One rule matters most: a change must never alter a single game result. See [CONTRIBUTING.md](CONTRIBUTING.md).
+More documentation: [architecture](docs/ARCHITECTURE.md), [porting guide](docs/PORTING_GUIDE.md), [file map](docs/FILE_MAP.md).
