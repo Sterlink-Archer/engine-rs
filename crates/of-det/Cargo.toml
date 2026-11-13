@@ -1,0 +1,13 @@
+[package]
+name = "of-det"
+description = "Bit-exact ports of the OpenFront engine's deterministic leaf code (DetMath, PRNG, Util) and JS semantics (js_compat). © OpenFront and Contributors; unofficial AGPL-3.0-only port."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+
+[features]
+# Per-draw PRNG trace hook (ARCHITECTURE §4.5; `conform --prng-trace`). Off by default.
+prng-trace = []

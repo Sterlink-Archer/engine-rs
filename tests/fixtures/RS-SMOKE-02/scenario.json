@@ -1,0 +1,186 @@
+{
+ "spec": "ofconf/1",
+ "csVersion": 1,
+ "id": "RS-SMOKE-02",
+ "engine": {
+  "commit": "0211f17b71efa762242b620b91ffa5d8439522e6"
+ },
+ "gameStart": {
+  "gameID": "rs2",
+  "lobbyCreatedAt": 0,
+  "config": {
+   "gameMap": "Australia",
+   "difficulty": "Medium",
+   "donateGold": false,
+   "donateTroops": false,
+   "gameType": "Public",
+   "gameMode": "Free For All",
+   "rankedType": "1v1",
+   "gameMapSize": "Compact",
+   "nations": "disabled",
+   "bots": 100,
+   "infiniteGold": false,
+   "infiniteTroops": false,
+   "instantBuild": false,
+   "randomSpawn": false,
+   "maxPlayers": 2,
+   "maxTimerValue": 15,
+   "spawnImmunityDuration": 300,
+   "disabledUnits": []
+  },
+  "players": [
+   {
+    "clientID": "SCRIPTAA",
+    "username": "ScriptA",
+    "clanTag": null
+   },
+   {
+    "clientID": "SCRIPTBB",
+    "username": "ScriptB",
+    "clanTag": null
+   }
+  ]
+ },
+ "clientID": null,
+ "map": {
+  "source": "resources",
+  "name": "Australia",
+  "size": "Compact",
+  "dir": "resources/maps/australia",
+  "files": {
+   "manifest.json": "09239ef61df6923102b8b11c4d2deef77732792089d00695932626828df96d1c",
+   "map.bin": "997ce7afec065820a5379ca8bfdbab611f2ce644a4fafecb784322e0a5312620",
+   "map16x.bin": "c5678f3a9573b05398167c837155ab9564d0e840d15ef9b412aa4dd02963d667",
+   "map4x.bin": "5a233c3ddc966c2620508a6630d7cb78d6e431111a87ac63f89b8223519150ab"
+  }
+ },
+ "start": {
+  "kind": "fresh"
+ },
+ "ticks": 2500,
+ "kStride": 1,
+ "secEvery": 100,
+ "dumpEvery": null,
+ "dumps": [
+  {
+   "tick": 0,
+   "file": "dumps/t0.cs.zst",
+   "resumable": true,
+   "D": "35dfca6ab1a6178a",
+   "K": "8588b526486eb83c"
+  },
+  {
+   "tick": 1000,
+   "file": "dumps/t1000.cs.zst",
+   "resumable": true,
+   "D": "79871521a6e904c6",
+   "K": "31a3cd617aa8c720"
+  },
+  {
+   "tick": 2500,
+   "file": "dumps/t2500.cs.zst",
+   "resumable": true,
+   "D": "d463f868ea51ee97",
+   "K": "e539104f87f23e23"
+  }
+ ],
+ "final": {
+  "tick": 2500,
+  "D": "d463f868ea51ee97",
+  "K": "e539104f87f23e23",
+  "winner": null
+ },
+ "fatal": null,
+ "turnsDigest": "0137de8207fe7deb",
+ "generator": {
+  "tool": "conformance/tools/rs_fixture.ts",
+  "argv": [
+   "--out",
+   "<out dir>",
+   "--map",
+   "Australia",
+   "--size",
+   "Compact",
+   "--bots",
+   "100",
+   "--ticks",
+   "2500",
+   "--sec-every",
+   "100",
+   "--dumps",
+   "0,1000,2500",
+   "--seed",
+   "rs2"
+  ],
+  "policy": "scripted2",
+  "policySeed": "rs2",
+  "node": "v24.21.0",
+  "host": "192-222-51-17",
+  "arch": "arm64",
+  "machine": {
+   "host": "192-222-51-17",
+   "arch": "arm64",
+   "cpuModel": "Neoverse-V2",
+   "nCpus": 64,
+   "cpusAllowed": "54-55",
+   "node": "v24.21.0",
+   "loadavg": [
+    66.63,
+    75.83,
+    90.91
+   ]
+  },
+  "createdAt": "2026-11-09T19:59:26.269Z",
+  "wallMs": 37322
+ },
+ "provenance": {
+  "source": "synthetic",
+  "note": "fixture for engine-rs smoke tests; not an official corpus trace (t070 owns that)"
+ },
+ "stats": {
+  "intents": 265,
+  "kRecords": 2501,
+  "secRecords": 26
+ },
+ "dumpSectionDigests": {
+  "0": {
+   "G": "b366eadd0dcb5e9f",
+   "T": "a8cec0b8612e98aa",
+   "M": "c7e6c1b1f7c9ffb8",
+   "P": "6e510c0f4da3e8a9",
+   "U": "08395c07b4f143d7",
+   "A": "08395c07b4f143d7",
+   "D": "47dc8ce9de94cb96",
+   "R": "7ded4a03918e1f46",
+   "W": "58a15feeed91da51",
+   "E": "bf93dbd4c66b5583",
+   "S": "6f05b08607b3d0a6"
+  },
+  "1000": {
+   "G": "bc5ec9b4fcb97ad3",
+   "T": "e458e19f668f4caa",
+   "M": "c7e6c1b1f7c9ffb8",
+   "P": "a8c621faacc83cb8",
+   "U": "4862702d8a4551c0",
+   "A": "7169766c19e95bdb",
+   "D": "47dc8ce9de94cb96",
+   "R": "7ded4a03918e1f46",
+   "W": "58a15feeed91da51",
+   "E": "304cac0cb3443640",
+   "S": "9e8a67abe399c2aa"
+  },
+  "2500": {
+   "G": "6b9f5e40aa00e6de",
+   "T": "0ae0c346959619aa",
+   "M": "c7e6c1b1f7c9ffb8",
+   "P": "6ab739ae52e90356",
+   "U": "58d8580179298829",
+   "A": "e1b1bed9b64b9e0e",
+   "D": "47dc8ce9de94cb96",
+   "R": "8eca05a30232682a",
+   "W": "58a15feeed91da51",
+   "E": "662914cf0e43ded2",
+   "S": "aafb4796beb758be"
+  }
+ }
+}

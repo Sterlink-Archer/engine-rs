@@ -1,0 +1,60 @@
+# of-engine lint configuration (PORTING_GUIDE §12). Applies to every workspace crate;
+# of-det (the implementation of these primitives) allows the two lints at its crate root.
+# Each `reason` is shown in the clippy error.
+
+disallowed-methods = [
+  # JS Math semantics differ from std (NaN, ±0, half rounding) or are not deterministic
+  # across architectures: use of_det::js::* / of_det::detmath::* (PORTING_GUIDE §3).
+  { path = "f64::max", reason = "JS Math.max: use of_det::js::max (NaN/±0 semantics)" },
+  { path = "f64::min", reason = "JS Math.min: use of_det::js::min (NaN/±0 semantics)" },
+  { path = "f64::round", reason = "JS Math.round rounds half up: use of_det::js::round" },
+  { path = "f64::powf", reason = "use of_det::detmath::pow" },
+  { path = "f64::powi", reason = "use x * x (x ** 2) or of_det::detmath::pow" },
+  { path = "f64::exp", reason = "use of_det::detmath::exp" },
+  { path = "f64::exp2", reason = "use of_det::detmath::pow2" },
+  { path = "f64::ln", reason = "use of_det::detmath::log" },
+  { path = "f64::log", reason = "use of_det::detmath::log" },
+  { path = "f64::log2", reason = "use of_det::detmath" },
+  { path = "f64::log10", reason = "use of_det::detmath" },
+  { path = "f64::sin", reason = "not deterministic across arches; not used by the engine" },
+  { path = "f64::cos", reason = "not deterministic across arches; not used by the engine" },
+  { path = "f64::tan", reason = "not deterministic across arches; not used by the engine" },
+  { path = "f64::atan", reason = "use of_det::detmath::atan2" },
+  { path = "f64::atan2", reason = "use of_det::detmath::atan2" },
+  { path = "f64::hypot", reason = "not in the engine; spell out the sqrt" },
+  { path = "f64::cbrt", reason = "not in the engine" },
+  { path = "f64::mul_add", reason = "FMA changes rounding; JS never fuses" },
+  { path = "f32::max", reason = "use of_det::js::max on f64" },
+  { path = "f32::min", reason = "use of_det::js::min on f64" },
+  { path = "f32::round", reason = "use of_det::js::round on f64" },
+  { path = "f32::mul_add", reason = "FMA changes rounding; JS never fuses" },
+  # std hash containers must never be iterated (order is random per process).
+  { path = "std::collections::HashMap::iter", reason = "hash order; use JsMap or jsorder::LookupMap" },
+  { path = "std::collections::HashMap::iter_mut", reason = "hash order; use JsMap or jsorder::LookupMap" },
+  { path = "std::collections::HashMap::keys", reason = "hash order; use JsMap or jsorder::LookupMap" },
+  { path = "std::collections::HashMap::values", reason = "hash order; use JsMap or jsorder::LookupMap" },
+  { path = "std::collections::HashMap::values_mut", reason = "hash order; use JsMap or jsorder::LookupMap" },
+  { path = "std::collections::HashMap::drain", reason = "hash order; use JsMap or jsorder::LookupMap" },
+  { path = "std::collections::HashMap::into_keys", reason = "hash order; use JsMap or jsorder::LookupMap" },
+  { path = "std::collections::HashMap::into_values", reason = "hash order; use JsMap or jsorder::LookupMap" },
+  { path = "std::collections::HashSet::iter", reason = "hash order; use JsSet or jsorder::LookupSet" },
+  { path = "std::collections::HashSet::drain", reason = "hash order; use JsSet or jsorder::LookupSet" },
+  # Array.prototype.sort is V8 TimSort, comparator call order included (PORTING_GUIDE §6).
+  { path = "slice::sort_by", reason = "TS arr.sort(cmp): use of_det::js_sort_by (V8 TimSort)" },
+  { path = "slice::sort_by_key", reason = "TS arr.sort(cmp): use of_det::js_sort_by (V8 TimSort)" },
+  { path = "slice::sort_by_cached_key", reason = "TS arr.sort(cmp): use of_det::js_sort_by (V8 TimSort)" },
+  { path = "slice::sort_unstable", reason = "TS arr.sort(cmp): use of_det::js_sort_by (V8 TimSort)" },
+  { path = "slice::sort_unstable_by", reason = "TS arr.sort(cmp): use of_det::js_sort_by (V8 TimSort)" },
+  { path = "slice::sort_unstable_by_key", reason = "TS arr.sort(cmp): use of_det::js_sort_by (V8 TimSort)" },
+  # The only catch_unwind sites: path/stepper.rs (TsThrow -> NOT_FOUND) and runner.rs
+  # (Game::step). Both carry `#[allow(clippy::disallowed_methods)]` with a comment.
+  { path = "std::panic::catch_unwind", reason = "only path/stepper.rs and runner.rs may catch (PORTING_GUIDE §11)" },
+]
+
+disallowed-types = [
+  { path = "std::rc::Rc", reason = "no shared ownership in sim state (ARCHITECTURE §8.1)" },
+  { path = "std::cell::RefCell", reason = "scratch goes through Ctx, never interior mutability" },
+  { path = "std::cell::Cell", reason = "scratch goes through Ctx, never interior mutability" },
+  { path = "std::collections::HashMap", reason = "use JsMap (iterated) or jsorder::LookupMap (lookup-only)" },
+  { path = "std::collections::HashSet", reason = "use JsSet (iterated) or jsorder::LookupSet (lookup-only)" },
+]

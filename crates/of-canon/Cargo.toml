@@ -1,0 +1,9 @@
+[package]
+name = "of-canon"
+description = "Canonical State v1 (CS v1) value model, CSE1 encoder/decoder, FNV64W digests and K projection, per conformance/docs/SPEC.md §1. © OpenFront and Contributors; unofficial AGPL-3.0-only port."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]

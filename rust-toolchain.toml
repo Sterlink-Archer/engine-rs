@@ -1,0 +1,5 @@
+# Pinned to 1.96.0 (installed on x86_64 and aarch64 hosts; ARCHITECTURE §2).
+# Cargo.toml's rust-version is the MSRV floor.
+[toolchain]
+channel = "1.96.0"
+components = ["rustfmt", "clippy"]

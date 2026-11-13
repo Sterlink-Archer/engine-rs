@@ -1,0 +1,31 @@
+[package]
+name = "of-engine"
+description = "Bit-exact Rust port of the OpenFront.io engine (upstream v0.36.0): state, executions, runner. Built on of-det (deterministic leaf code + JS semantics). © OpenFront and Contributors; unofficial AGPL-3.0-only port."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+# Per-draw nation PRNG trace (ARCHITECTURE §4.5), forwarded to of-det.
+prng-trace = ["of-det/prng-trace"]
+# The full StatsImpl port (CS S, conformance L3); off for throughput-oriented builds (ARCHITECTURE §3.10).
+stats-full = []
+# Recompute every exact memo on each hit and assert equality (G11).
+verify-memos = []
+# t409: wall-clock probes per execution kind / game phase / step section (src/prof.rs); profiling only.
+prof = []
+
+[dependencies]
+of-det.workspace = true
+of-canon.workspace = true
+of-engine-derive.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+of-trace.workspace = true
+anyhow.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,74 @@
+[workspace]
+resolver = "3"
+members = [
+    # conformance workflow
+    "crates/of-det",
+    "crates/of-canon",
+    "crates/of-trace",
+    "crates/of-vectors",
+    # of-engine port (FILE_MAP §3 S0)
+    "crates/of-engine-derive",
+    "crates/of-engine",
+    "crates/of-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "AGPL-3.0-only"   # derived from OpenFront (AGPL-3.0)
+publish = false
+
+[workspace.dependencies]
+of-det = { path = "crates/of-det" }
+of-canon = { path = "crates/of-canon" }
+of-trace = { path = "crates/of-trace" }
+of-engine-derive = { path = "crates/of-engine-derive" }
+of-engine = { path = "crates/of-engine" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+zstd = "0.13"
+anyhow = "1"
+sha2 = "0.10"
+hex = "0.4"
+
+# Lints for the of-engine crates (`[lints] workspace = true`); clippy.toml holds the
+# disallowed methods/types (PORTING_GUIDE §12).
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+disallowed_methods = "deny"
+disallowed_types = "deny"
+
+# Max-performance release build. Target CPU is NOT set here (it would break
+# cross-builds): pass it via RUSTFLAGS, see scripts/build-release.sh and README §Build.
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+# `unwind`, never `abort`: TS throws are `TsThrow` panics caught at the path-finder
+# stepper and at `Game::step` (ARCHITECTURE §4.6, PORTING_GUIDE §11).
+panic = "unwind"
+debug = false
+incremental = false
+
+# Conformance runs: release speed plus overflow checks (an i64 bigint overflow must be a
+# loud Fatal::Bug, ARCHITECTURE §7.2).
+[profile.conformance]
+inherits = "release"
+overflow-checks = true
+debug-assertions = false
+
+# Same as release but keeps symbols, for perf/flamegraph.
+[profile.profiling]
+inherits = "release"
+debug = "line-tables-only"
+strip = false
+
+# Tests decompress/parse ~40 MB of JSON vectors: optimise deps even in test builds.
+[profile.dev.package."*"]
+opt-level = 3
+[profile.test]
+opt-level = 2

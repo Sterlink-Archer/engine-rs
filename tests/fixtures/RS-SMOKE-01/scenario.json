@@ -1,0 +1,186 @@
+{
+ "spec": "ofconf/1",
+ "csVersion": 1,
+ "id": "RS-SMOKE-01",
+ "engine": {
+  "commit": "0211f17b71efa762242b620b91ffa5d8439522e6"
+ },
+ "gameStart": {
+  "gameID": "rs1",
+  "lobbyCreatedAt": 0,
+  "config": {
+   "gameMap": "Iceland",
+   "difficulty": "Medium",
+   "donateGold": false,
+   "donateTroops": false,
+   "gameType": "Public",
+   "gameMode": "Free For All",
+   "rankedType": "1v1",
+   "gameMapSize": "Compact",
+   "nations": "disabled",
+   "bots": 40,
+   "infiniteGold": false,
+   "infiniteTroops": false,
+   "instantBuild": false,
+   "randomSpawn": false,
+   "maxPlayers": 2,
+   "maxTimerValue": 15,
+   "spawnImmunityDuration": 300,
+   "disabledUnits": []
+  },
+  "players": [
+   {
+    "clientID": "SCRIPTAA",
+    "username": "ScriptA",
+    "clanTag": null
+   },
+   {
+    "clientID": "SCRIPTBB",
+    "username": "ScriptB",
+    "clanTag": null
+   }
+  ]
+ },
+ "clientID": null,
+ "map": {
+  "source": "resources",
+  "name": "Iceland",
+  "size": "Compact",
+  "dir": "resources/maps/iceland",
+  "files": {
+   "manifest.json": "8bd8c9598f6651df6d40a7c7acd4ddf20f61e6f316b7b03d1986fc43d9f288a2",
+   "map.bin": "28491fb2fec516b477c4fbbb60d507717eeec589e54868a9129a410f7dfe00f0",
+   "map16x.bin": "e522e0b87fef92da537ec4df2bb6ee07e8b9f825ef84d172c2764b4974627293",
+   "map4x.bin": "dee55c1ff22f0198b0aabcd12452394846106897205889fd2b304a35f695d56d"
+  }
+ },
+ "start": {
+  "kind": "fresh"
+ },
+ "ticks": 600,
+ "kStride": 1,
+ "secEvery": 50,
+ "dumpEvery": null,
+ "dumps": [
+  {
+   "tick": 0,
+   "file": "dumps/t0.cs.zst",
+   "resumable": true,
+   "D": "454e19c3618708ca",
+   "K": "6087ce34a51699b0"
+  },
+  {
+   "tick": 300,
+   "file": "dumps/t300.cs.zst",
+   "resumable": true,
+   "D": "9b119272abeae5d1",
+   "K": "04390f7d73c2cbde"
+  },
+  {
+   "tick": 600,
+   "file": "dumps/t600.cs.zst",
+   "resumable": true,
+   "D": "c4bf184f14119998",
+   "K": "9dd15e5e0b1a3973"
+  }
+ ],
+ "final": {
+  "tick": 600,
+  "D": "c4bf184f14119998",
+  "K": "9dd15e5e0b1a3973",
+  "winner": null
+ },
+ "fatal": null,
+ "turnsDigest": "d2141e45f3fb6d6b",
+ "generator": {
+  "tool": "conformance/tools/rs_fixture.ts",
+  "argv": [
+   "--out",
+   "<out dir>",
+   "--map",
+   "Iceland",
+   "--size",
+   "Compact",
+   "--bots",
+   "40",
+   "--ticks",
+   "600",
+   "--sec-every",
+   "50",
+   "--dumps",
+   "0,300,600",
+   "--seed",
+   "rs1"
+  ],
+  "policy": "scripted2",
+  "policySeed": "rs1",
+  "node": "v24.21.0",
+  "host": "192-222-51-17",
+  "arch": "arm64",
+  "machine": {
+   "host": "192-222-51-17",
+   "arch": "arm64",
+   "cpuModel": "Neoverse-V2",
+   "nCpus": 64,
+   "cpusAllowed": "54-55",
+   "node": "v24.21.0",
+   "loadavg": [
+    67.37,
+    77.28,
+    92.02
+   ]
+  },
+  "createdAt": "2026-11-09T19:58:48.467Z",
+  "wallMs": 4879
+ },
+ "provenance": {
+  "source": "synthetic",
+  "note": "fixture for engine-rs smoke tests; not an official corpus trace (t070 owns that)"
+ },
+ "stats": {
+  "intents": 30,
+  "kRecords": 601,
+  "secRecords": 13
+ },
+ "dumpSectionDigests": {
+  "0": {
+   "G": "aff82d5150f394e3",
+   "T": "a8cec0b8612e98aa",
+   "M": "dca06cdd17a53eaa",
+   "P": "d3921d24662226a3",
+   "U": "08395c07b4f143d7",
+   "A": "08395c07b4f143d7",
+   "D": "47dc8ce9de94cb96",
+   "R": "7ded4a03918e1f46",
+   "W": "58a15feeed91da51",
+   "E": "262e671b31c84ec3",
+   "S": "6f05b08607b3d0a6"
+  },
+  "300": {
+   "G": "d8cf7528b5a601ef",
+   "T": "980bd0b504dc76aa",
+   "M": "dca06cdd17a53eaa",
+   "P": "78ab07359911659b",
+   "U": "08395c07b4f143d7",
+   "A": "759e90514b6fb075",
+   "D": "47dc8ce9de94cb96",
+   "R": "7ded4a03918e1f46",
+   "W": "58a15feeed91da51",
+   "E": "44e6c13e28e98bed",
+   "S": "febeb80f0788d632"
+  },
+  "600": {
+   "G": "fd5ddb35192ae790",
+   "T": "76062412310b09aa",
+   "M": "dca06cdd17a53eaa",
+   "P": "b1cb04e294b3777a",
+   "U": "c6188b934f6d04e1",
+   "A": "31e1ac4a3f31512d",
+   "D": "47dc8ce9de94cb96",
+   "R": "7ded4a03918e1f46",
+   "W": "58a15feeed91da51",
+   "E": "f9fa8e5876625db1",
+   "S": "8824c41246849f22"
+  }
+ }
+}

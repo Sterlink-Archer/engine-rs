@@ -1,0 +1,20 @@
+[package]
+name = "of-trace"
+description = "Conformance trace reader (SPEC §2 corpus layout v1), pluggable Engine trait, per-tick digest comparison loop with first-divergence reports (SPEC §3), and the of-conform CLI. © OpenFront and Contributors; unofficial AGPL-3.0-only port."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+of-canon.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+zstd.workspace = true
+anyhow.workspace = true
+sha2.workspace = true
+hex.workspace = true
+
+[[bin]]
+name = "of-conform"
+path = "src/bin/of-conform.rs"

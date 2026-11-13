@@ -1,0 +1,17 @@
+[package]
+name = "of-vectors"
+description = "Checks of-det against the TS-recorded golden vectors (conformance/golden/vectors, VECTORS.md). Tier (a) / SPEC level L0. © OpenFront and Contributors; unofficial AGPL-3.0-only port."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+of-det.workspace = true
+serde_json.workspace = true
+zstd.workspace = true
+anyhow.workspace = true
+
+[[bin]]
+name = "of-vectors"
+path = "src/bin/of-vectors.rs"

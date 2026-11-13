@@ -1,0 +1,68 @@
+NOTICE and ATTRIBUTION
+
+This project is an UNOFFICIAL, independent port. It is not affiliated with, endorsed by, or
+sponsored by OpenFront Inc. or the OpenFront.io project.
+
+Copyright
+---------
+This work is a derivative work (a translation into Rust, function by function) of the OpenFront.io
+game engine:
+
+    OpenFront.io, © OpenFront and Contributors
+    Copyright (c) 2024-2026 OpenFront Inc. and Contributors
+    Portions Copyright (c) 2024 WarFront.io Team (historical MIT-licensed code)
+    https://github.com/openfrontio/OpenFrontIO
+    Game: https://openfront.io/
+
+Rust source files cite the upstream TypeScript file and line they port (for example
+`PlayerImpl.ts:188`). Those upstream sources are licensed under the GNU Affero General Public
+License v3.0 (AGPL-3.0). The port is therefore licensed under AGPL-3.0-only as well; see LICENSE.
+Modifications and new code in this repository are Copyright (C) 2026 the contributors of this
+repository, under the same license.
+
+Upstream version ported: OpenFront.io v0.36.0, commit 0211f17b71efa762242b620b91ffa5d8439522e6
+(release of 2026-11-09). v0.36.0 descends from 5b75bd3ad8f66325a727f7bcec47680a0cc07e63; the
+golden vectors under conformance/golden/vectors were generated at that earlier commit (see
+conformance/golden/vectors/MANIFEST.json).
+
+AGPL Section 7 additional terms from upstream (Phase 5 of upstream LICENSING.md)
+-------------------------------------------------------------------------------
+The upstream LICENSE file ends with "ADDITIONAL TERMS (AGPL v3 Section 7)". They are reproduced
+in LICENSE and apply to this work. In short:
+
+  (b) Copyright preservation. Modified versions must preserve the copyright notice
+      "© OpenFront and Contributors" in reasonably visible locations. This repository does so
+      in README.md (top), in this NOTICE, in the `engine-rs version` / `engine-rs` usage banner of
+      the command line tool, and in the crate descriptions.
+  (c) No misrepresentation. This work states that it is an unofficial port and does not claim
+      official status or endorsement. Do not use "OpenFront" as the primary title of a
+      derivative, and do not imply endorsement, without permission from OpenFront Inc.
+
+Network use (AGPL section 13): if you run a modified version of this software so that other users
+interact with it remotely over a network, you must offer those users the corresponding source.
+
+Assets
+------
+The code of this repository is AGPL-3.0-only. The files under `assets/` are map data copied
+unmodified from the upstream `resources/maps` directory (Iceland and Australia: manifest.json,
+map.bin, map4x.bin, map16x.bin). They are Creative Commons BY-SA 4.0 licensed; attribution:
+"OpenFront" / "OpenFront Inc." See LICENSE-ASSETS (verbatim from upstream),
+assets/LICENSE-CC-BY-SA-4.0.txt, and assets/CREDITS-upstream.md (the upstream credits for the
+underlying map data sources, which include OpenStreetMap contributors (ODbL), Natural Earth
+(public domain) and others). Small test maps under crates/of-engine/tests/testdata,
+crates/of-engine/tests/p4b_vectors/maps and crates/of-engine/src/water/testdata/maps are
+likewise copied from upstream (upstream tests/testdata and resources/maps) and carry the same
+terms; see the README.md in each of those directories.
+
+The file crates/of-engine/src/map/maps_gen.rs embeds data generated from upstream map-generator
+assets (map-generator/assets/maps/*/info.json, via upstream Maps.gen.ts) by tools/gen_p3_tables.py.
+The upstream map assets are CC BY-SA 4.0 and the generated table is covered by the same attribution.
+
+No proprietary upstream asset is included. The upstream `/proprietary` directory ("All Rights
+Reserved") and any asset served from OpenFront's servers are NOT part of this repository and must
+never be added to it.
+
+Other credits
+-------------
+The engine port also relies on third-party Rust crates (serde, serde_json, zstd, sha2, hex, ...)
+under their own permissive licenses; see Cargo.lock for the exact set.

@@ -1,0 +1,145 @@
+{
+ "schema": "openfront-conformance-vectors-manifest/1",
+ "engine_commit": "5b75bd3ad8f66325a727f7bcec47680a0cc07e63",
+ "engine_root": "upstream checkout at engine_commit",
+ "node": "v24.21.0",
+ "v8": "13.6.233.17-node.53",
+ "arch": "x64",
+ "platform": "linux",
+ "generated_at": "2026-11-05T07:50:07.799Z",
+ "command": "conformance/vectors/gen.ts (TypeScript generator, not included in this repository)",
+ "suites": {
+  "detmath": {
+   "file": "detmath.json.zst",
+   "json_bytes": 16595201,
+   "zst_bytes": 3794879,
+   "json_sha256": "4fc8c9d3270b0fb62a9e33d4edf62d7e4e4f6de140015e04fe63abef5c8ef8a7",
+   "content_sha256": "af1a5505160038c869fae2f375275c7b1d7cc2d118146ad478cbce17e11f7093",
+   "counts": {
+    "exp": 36314,
+    "log": 25774,
+    "pow": 45638,
+    "pow2": 2516,
+    "atan2": 49720,
+    "nuke_ring_lookup": 31416
+   },
+   "ms": 1847
+  },
+  "prng": {
+   "file": "prng.json.zst",
+   "json_bytes": 3666849,
+   "zst_bytes": 1380141,
+   "json_sha256": "9b99a039424f773d60303050900b2ec985a1e415fa84f6a7045d7f63cd7199c9",
+   "content_sha256": "ce60a473c741fc4e322b7710c3ff0f9dbe53734dd3ee4b21bcc20dc712f68eae",
+   "counts": {
+    "stream_next_1000": 195,
+    "fromState": 40,
+    "mixed_scripts": 48,
+    "nextInt_0_100": 80,
+    "nextInt_m7p5_3p25": 80,
+    "nextFloat_m1_1": 80,
+    "chance": 10,
+    "nextID": 40,
+    "shuffleArray": 320
+   },
+   "ms": 432
+  },
+  "util": {
+   "file": "util.json.zst",
+   "json_bytes": 2021006,
+   "zst_bytes": 478633,
+   "json_sha256": "985f16128b651fb1a3193014ef87a278d777c65f02b1e20f9913b41fbea41197",
+   "content_sha256": "0bb3636d8952aa0b2cac44fd5031ed3f498d9372e7c4a17badc1c954963f76a8",
+   "counts": {
+    "simpleHash": 1816,
+    "toInt": 2057,
+    "minInt_maxInt_withinInt": 400,
+    "within": 2424,
+    "sigmoid": 4812,
+    "manhattanDistWrapped": 1000,
+    "boundingBoxCenter_inscribed": 600,
+    "findMinimumBy": 400,
+    "getMode": 300,
+    "closestTwoTiles": 400,
+    "doomsdayClockRequiredTiles": 13620,
+    "doomsdayClockTroopFloor": 1500,
+    "doomsdayClockDrain": 3000,
+    "doomsdayClockRotQuota": 600,
+    "rotNoise": 2000,
+    "maxHealthWithVeterancy": 140
+   },
+   "ms": 219
+  },
+  "config": {
+   "file": "config.json.zst",
+   "json_bytes": 7580837,
+   "zst_bytes": 2108412,
+   "json_sha256": "1fb7e5c248c295f0b74d4936d899ad76d00e5e56f2f350196a06dc29a8ddcdc0",
+   "content_sha256": "aef329b00a32f7d75afdfd33affa63b07bbe605b70ce708c18d3f91f3f5b1a09",
+   "counts": {
+    "zero_arg_methods": 1476,
+    "maxTroops": 2785,
+    "troopIncreaseRate": 7250,
+    "goldAdditionRate": 108,
+    "trainGold": 9072,
+    "tradeShipGold": 21400,
+    "conquerGoldAmount": 18,
+    "saturation": 3501,
+    "smallEconomySpawnBoost": 50,
+    "tradeShipSpawnRate": 4480,
+    "trainSpawnRate": 2610,
+    "unitInfo": 288,
+    "unitCost": 825,
+    "attackLogic": 12327,
+    "troop_amounts": 1500,
+    "start_manpower_gold": 108,
+    "nukeMagnitudes_nukeSpeed": 288,
+    "samRange": 1020,
+    "dynamicSamRange": 1500,
+    "nukeDeathFactor": 3000,
+    "misc_formulas": 302,
+    "percentageTilesOwnedToWin": 5676
+   },
+   "ms": 1056
+  },
+  "jssem": {
+   "file": "jssem.json.zst",
+   "json_bytes": 4519149,
+   "zst_bytes": 1048112,
+   "json_sha256": "5a4bbc7aff9dd3ca71a4ba702f6e3b8fe93b8060dec6e3b209b4380be247fb89",
+   "content_sha256": "15ef29a5538c7b254b92aee73ffad83a2c4589c2582a88f7e46500d6767327d7",
+   "counts": {
+    "Math.round": 8664,
+    "Math.floor_ceil_trunc": 8664,
+    "Math.sign_abs_sqrt": 8664,
+    "Math.fround": 15018,
+    "ToInt32_ToUint32": 3010,
+    "Math.imul": 3529,
+    "shifts": 2500,
+    "bitwise_and_wrapping_add": 1500,
+    "mod_div": 3400,
+    "Math.min_max": 65,
+    "bigint_div_mod_mul": 2916,
+    "Number(bigint)": 1528,
+    "BigInt(number)": 648,
+    "toString36": 1000
+   },
+   "ms": 350
+  },
+  "order": {
+   "file": "order.json.zst",
+   "json_bytes": 10098084,
+   "zst_bytes": 2261210,
+   "json_sha256": "18a65804cf04cc5fa05520b508029c7b77cd28ab7d5a77ac3c3c4384a1c983d6",
+   "content_sha256": "eeec1805f190b1c3faae622eb42a0ea9c98ca642a33b06742e17a31947a61523",
+   "counts": {
+    "array_sort": 5121,
+    "FlatBinaryHeap": 120,
+    "map_insertion_order": 200,
+    "set_iteration_with_mutation": 200,
+    "object_key_order": 100
+   },
+   "ms": 1186
+  }
+ }
+}

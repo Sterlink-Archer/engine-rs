@@ -1,0 +1,18 @@
+[package]
+name = "of-engine-derive"
+description = "#[derive(StateClone)] for of-engine: Clone whose clone_from forwards field by field (pooled forks reuse every buffer), plus the PlainState marker check (ARCHITECTURE §8.1). © OpenFront and Contributors; unofficial AGPL-3.0-only port."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"
+
+[lints]
+workspace = true

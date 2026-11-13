@@ -1,0 +1,43 @@
+[package]
+name = "of-cli"
+description = "engine-rs command line: conformance runs (SPEC §3.4) through the of-trace Engine adapter for of-engine, bench, fork-bench (P13 fills the subcommands). © OpenFront and Contributors; unofficial AGPL-3.0-only port."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "engine-rs"
+path = "src/main.rs"
+
+[features]
+# Per-draw PRNG trace for `conform --prng-trace` (ARCHITECTURE §4.5).
+prng-trace = ["of-engine/prng-trace"]
+# The full StatsImpl port (CS S, so D/L3; ARCHITECTURE §3.10).
+stats-full = ["of-engine/stats-full"]
+# SIGPROF statistical profiler for `bench` (OF_SAMPLE_OUT=<file>; linux aarch64; t066).
+sampler = ["dep:libc"]
+
+[dependencies]
+of-engine.workspace = true
+of-canon.workspace = true
+of-trace.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+sha2.workspace = true
+hex.workspace = true
+libc = { version = "0.2.189", optional = true }
+
+# The workspace lints (`[workspace.lints]`), except `unsafe_code`: `deny` instead of `forbid`
+# so the counting allocator (`src/alloc.rs`, fork-bench t091) can `#[allow]` its one
+# `unsafe impl GlobalAlloc`. Keep the rest in sync with the workspace table.
+[lints.rust]
+unsafe_code = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+disallowed_methods = "deny"
+disallowed_types = "deny"

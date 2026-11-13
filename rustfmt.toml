@@ -1,0 +1,4 @@
+# Applies to the of-engine crates checked by tools/ci.sh (the conformance crates keep their
+# own formatting).
+max_width = 120
+use_small_heuristics = "Max"
